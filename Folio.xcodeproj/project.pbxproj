@@ -17,7 +17,6 @@
 		A1000000000000000000000E /* SourceHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000D /* SourceHighlighter.swift */; };
 		A10000000000000000000010 /* OutlineViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000F /* OutlineViewController.swift */; };
 		A10000000000000000000012 /* WindowChromeState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* WindowChromeState.swift */; };
-		A10000000000000000000079 /* HeadingJumpBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000078 /* HeadingJumpBar.swift */; };
 		C20000000000000000000000 /* arena.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000 /* arena.c */; };
 		C20000000000000000000001 /* blocks.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000001 /* blocks.c */; };
 		C20000000000000000000002 /* buffer.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000002 /* buffer.c */; };
@@ -87,7 +86,6 @@
 		A1000000000000000000000D /* SourceHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceHighlighter.swift; sourceTree = "<group>"; };
 		A1000000000000000000000F /* OutlineViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlineViewController.swift; sourceTree = "<group>"; };
 		A10000000000000000000011 /* WindowChromeState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChromeState.swift; sourceTree = "<group>"; };
-		A10000000000000000000078 /* HeadingJumpBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadingJumpBar.swift; sourceTree = "<group>"; };
 		C10000000000000000000000 /* arena.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = arena.c; sourceTree = "<group>"; };
 		C10000000000000000000001 /* blocks.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = blocks.c; sourceTree = "<group>"; };
 		C10000000000000000000002 /* buffer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = buffer.c; sourceTree = "<group>"; };
@@ -203,7 +201,6 @@
 				A1000000000000000000000F /* OutlineViewController.swift */,
 				A10000000000000000000011 /* WindowChromeState.swift */,
 				A10000000000000000000074 /* SidebarViewController.swift */,
-				A10000000000000000000078 /* HeadingJumpBar.swift */,
 			);
 			path = Window;
 			sourceTree = "<group>";
@@ -447,7 +444,6 @@
 				A1000000000000000000000E /* SourceHighlighter.swift in Sources */,
 				A10000000000000000000010 /* OutlineViewController.swift in Sources */,
 				A10000000000000000000012 /* WindowChromeState.swift in Sources */,
-				A10000000000000000000079 /* HeadingJumpBar.swift in Sources */,
 				C20000000000000000000000 /* arena.c in Sources */,
 				C20000000000000000000001 /* blocks.c in Sources */,
 				C20000000000000000000002 /* buffer.c in Sources */,

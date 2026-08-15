@@ -2,19 +2,36 @@ import AppKit
 
 final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
     var items: [OutlineItem] = [] {
-        didSet { tableView.reloadData() }
+        didSet {
+            emptyLabel?.isHidden = !items.isEmpty
+            tableView.reloadData()
+        }
     }
     var onSelect: ((OutlineItem) -> Void)?
 
     private let tableView = NSTableView()
+    private var emptyLabel: NSTextField?
 
     override func loadView() {
+        let header = NSTextField(labelWithString: "On This Page")
+        header.font = .systemFont(ofSize: 11, weight: .semibold)
+        header.textColor = .secondaryLabelColor
+        header.translatesAutoresizingMaskIntoConstraints = false
+
+        let empty = NSTextField(labelWithString: "No headings")
+        empty.font = .systemFont(ofSize: 12)
+        empty.textColor = .tertiaryLabelColor
+        empty.translatesAutoresizingMaskIntoConstraints = false
+        empty.isHidden = !items.isEmpty
+        emptyLabel = empty
+
         let scroll = NSScrollView()
         scroll.drawsBackground = false
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
+        scroll.translatesAutoresizingMaskIntoConstraints = false
 
-        tableView.style = .plain
+        tableView.style = .sourceList
         tableView.headerView = nil
         tableView.backgroundColor = .clear
         tableView.selectionHighlightStyle = .regular
@@ -25,13 +42,29 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         tableView.target = self
         tableView.action = #selector(clicked)
         scroll.documentView = tableView
-        view = scroll
+
+        let wrap = NSView()
+        wrap.addSubview(header)
+        wrap.addSubview(scroll)
+        wrap.addSubview(empty)
+        NSLayoutConstraint.activate([
+            header.leadingAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.leadingAnchor, constant: 16),
+            header.trailingAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.trailingAnchor, constant: -12),
+            header.topAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.topAnchor, constant: 8),
+            scroll.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 6),
+            scroll.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
+            scroll.bottomAnchor.constraint(equalTo: wrap.bottomAnchor),
+            empty.leadingAnchor.constraint(equalTo: header.leadingAnchor),
+            empty.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 10),
+        ])
+        view = wrap
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int { items.count }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        let id = NSUserInterfaceItemIdentifier("cell")
+        let id = NSUserInterfaceItemIdentifier("heading")
         let cell = (tableView.makeView(withIdentifier: id, owner: self) as? NSTableCellView) ?? {
             let text = NSTextField(labelWithString: "")
             text.lineBreakMode = .byTruncatingTail
@@ -41,8 +74,8 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
             wrap.textField = text
             text.translatesAutoresizingMaskIntoConstraints = false
             NSLayoutConstraint.activate([
-                text.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 4),
-                text.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -6),
+                text.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 2),
+                text.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -8),
                 text.centerYAnchor.constraint(equalTo: wrap.centerYAnchor),
             ])
             return wrap
@@ -51,8 +84,8 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         let pad = String(repeating: "  ", count: max(0, item.level - 1))
         cell.textField?.stringValue = pad + item.title
         cell.textField?.font = item.level <= 1
-            ? .systemFont(ofSize: 13, weight: .semibold)
-            : .systemFont(ofSize: 13, weight: .regular)
+            ? .systemFont(ofSize: 12, weight: .semibold)
+            : .systemFont(ofSize: 12)
         cell.textField?.textColor = item.level <= 2 ? .labelColor : .secondaryLabelColor
         return cell
     }

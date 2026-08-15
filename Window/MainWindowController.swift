@@ -12,8 +12,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private var editorSplit: NSSplitView?
     private var rootSplit: NSSplitViewController?
     private var sidebarItem: NSSplitViewItem?
+    private var inspectorItem: NSSplitViewItem?
     private let fileSidebar = SidebarViewController()
-    private let jumpBar = HeadingJumpBar()
+    private let outlineController = OutlineViewController()
     private(set) var workspace: Workspace?
     private var editorHost: NSViewController?
     private var placeholderView: NSView?
@@ -58,6 +59,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         workspace = nil
         rootSplit = nil
         sidebarItem = nil
+        inspectorItem = nil
         editorSplit = nil
         editorHost = nil
         placeholderView = nil
@@ -153,8 +155,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             menuItem.state = viewMode == .reading ? .on : .off
             return markdownDocument != nil
         case #selector(toggleOutline(_:)):
-            menuItem.title = "On This Page"
-            return markdownDocument != nil && !jumpBar.items.isEmpty
+            let hidden = inspectorItem?.isCollapsed ?? true
+            menuItem.title = hidden ? "Show Outline" : "Hide Outline"
+            return markdownDocument != nil
         case #selector(nextFile(_:)), #selector(previousFile(_:)):
             return workspace != nil && markdownDocument?.fileURL != nil
         case #selector(closeFile(_:)):
@@ -169,7 +172,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     @objc func showReading(_ sender: Any?) { setViewMode(.reading) }
 
     @objc func toggleOutline(_ sender: Any?) {
-        jumpBar.showMenu()
+        inspectorItem?.animator().isCollapsed.toggle()
     }
 
     @objc func nextFile(_ sender: Any?) {
@@ -210,7 +213,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.toggleSidebar, .flexibleSpace, .init("folio.viewMode")]
+        [.toggleSidebar, .flexibleSpace, .init("folio.viewMode"), .flexibleSpace, .init("folio.outline")]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -245,6 +248,16 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             item.paletteLabel = "View"
             return item
         }
+        if itemIdentifier.rawValue == "folio.outline" {
+            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+            item.image = NSImage(systemSymbolName: "list.bullet", accessibilityDescription: "Outline")
+            item.label = "Outline"
+            item.paletteLabel = "Outline"
+            item.toolTip = "Show or hide the page outline"
+            item.target = self
+            item.action = #selector(toggleOutline(_:))
+            return item
+        }
         return nil
     }
 
@@ -263,7 +276,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         fileSidebar.onOpenInNewWindow = { [weak self] url in
             FolioDocumentController.folio.openInNewWindow(url, workspaceRoot: self?.workspace?.rootURL)
         }
-        jumpBar.onSelect = { [weak self] item in
+        outlineController.onSelect = { [weak self] item in
             self?.jump(to: item)
         }
 
@@ -278,9 +291,6 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         let container = NSView()
         host.view = container
         editorHost = host
-
-        jumpBar.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(jumpBar)
 
         let placeholder = NSTextField(labelWithString: "Select a Markdown file in the sidebar")
         placeholder.font = .systemFont(ofSize: 15)
@@ -298,15 +308,11 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         editorSplit = split
         container.addSubview(split)
         NSLayoutConstraint.activate([
-            jumpBar.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            jumpBar.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            jumpBar.topAnchor.constraint(equalTo: container.topAnchor),
-            jumpBar.heightAnchor.constraint(equalToConstant: 30),
-            placeholder.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            placeholder.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            placeholder.centerXAnchor.constraint(equalTo: container.safeAreaLayoutGuide.centerXAnchor),
+            placeholder.centerYAnchor.constraint(equalTo: container.safeAreaLayoutGuide.centerYAnchor),
             split.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             split.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            split.topAnchor.constraint(equalTo: jumpBar.bottomAnchor),
+            split.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor),
             split.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
 
@@ -322,8 +328,15 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         let editorItem = NSSplitViewItem(viewController: host)
         editorItem.minimumThickness = 360
 
+        let inspector = NSSplitViewItem(inspectorWithViewController: outlineController)
+        inspector.minimumThickness = 168
+        inspector.maximumThickness = 260
+        inspector.canCollapse = true
+        inspector.isCollapsed = markdownDocument == nil
+        inspectorItem = inspector
+
         let splitController = NSSplitViewController()
-        splitController.splitViewItems = [sidebar, editorItem]
+        splitController.splitViewItems = [sidebar, editorItem, inspector]
         rootSplit = splitController
         window?.contentView = nil
         window?.contentViewController = splitController
@@ -333,9 +346,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
 
     private func setEditorVisible(_ visible: Bool) {
         editorSplit?.isHidden = !visible
-        jumpBar.isHidden = !visible
         placeholderView?.isHidden = visible
         sidebarItem?.isCollapsed = workspace == nil
+        inspectorItem?.isCollapsed = !visible
         if visible {
             refreshEditorLayout()
         }
@@ -426,7 +439,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
 
     private func apply(snapshot: ParseSnapshot) {
         self.snapshot = snapshot
-        jumpBar.items = snapshot.outline
+        outlineController.items = snapshot.outline
         var style = ReaderStyle.default
         style.measure = readingTextView?.usableWidth ?? ReaderStyle.default.measure
         let rendered = ReadingRenderer.render(
