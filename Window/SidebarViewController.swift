@@ -28,8 +28,11 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         outline.backgroundColor = .clear
         outline.rowHeight = 26
         outline.indentationPerLevel = 14
-        outline.addTableColumn(NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name")))
-        outline.outlineTableColumn = outline.tableColumns[0]
+        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
+        column.resizingMask = .autoresizingMask
+        outline.addTableColumn(column)
+        outline.outlineTableColumn = column
+        outline.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
         outline.dataSource = self
         outline.delegate = self
         outline.target = self

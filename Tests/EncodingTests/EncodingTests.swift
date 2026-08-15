@@ -193,19 +193,49 @@ final class EncodingTests: XCTestCase {
         let window = MainWindowController()
         window.showWindow(nil)
         let originalWindow = window.window
-        FolioDocumentController.folio.openWorkspace(at: directory, in: window, forceCurrentWindow: true)
+        let before = MainWindowController.all.count
+        FolioDocumentController.folio.openWorkspace(at: directory, in: window)
         XCTAssertEqual(window.workspace?.rootURL, directory.standardizedFileURL)
+        XCTAssertEqual(MainWindowController.all.count, before)
 
         let opened = expectation(description: "replaced")
-        FolioDocumentController.folio.openMarkdown(at: first, in: window)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            XCTAssertEqual(window.markdownDocument?.textStorage.string, "# one\n")
+            XCTAssertTrue(window.window === originalWindow)
             FolioDocumentController.folio.replaceDocument(in: window, with: second)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 XCTAssertEqual(window.markdownDocument?.textStorage.string, "# two\n")
                 XCTAssertTrue(window.window === originalWindow)
+                XCTAssertEqual(MainWindowController.all.count, before)
                 XCTAssertNotNil(window.workspace)
                 opened.fulfill()
             }
+        }
+        wait(for: [opened], timeout: 5)
+        window.close()
+    }
+
+    func testOpenWorkspaceReusesWindowAndOpensFirstFile() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("folio-folder-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try Data("# readme\n".utf8).write(to: directory.appendingPathComponent("readme.md"))
+
+        let window = MainWindowController()
+        window.showWindow(nil)
+        window.window?.makeKeyAndOrderFront(nil)
+        let originalWindow = window.window
+        let before = MainWindowController.all.count
+        FolioDocumentController.folio.openWorkspace(at: directory, in: window)
+        XCTAssertEqual(MainWindowController.all.count, before)
+
+        let opened = expectation(description: "folder")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            XCTAssertTrue(window.window === originalWindow)
+            XCTAssertEqual(window.markdownDocument?.textStorage.string, "# readme\n")
+            XCTAssertNotNil(window.workspace)
+            opened.fulfill()
         }
         wait(for: [opened], timeout: 5)
         window.close()

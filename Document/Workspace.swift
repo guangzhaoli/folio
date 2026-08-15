@@ -20,15 +20,21 @@ final class Workspace {
         return children
     }
 
-    func containsMarkdown() -> Bool {
-        func walk(_ node: FileNode) -> Bool {
-            if node.isMarkdown { return true }
-            for child in expand(node) where !child.isTruncated {
-                if walk(child) { return true }
+    func firstMarkdown() -> URL? {
+        func walk(_ node: FileNode) -> URL? {
+            if node.isMarkdown { return node.url }
+            let children = expand(node).filter { !$0.isTruncated }
+            if let file = children.first(where: \.isMarkdown) { return file.url }
+            for child in children where child.isDirectory {
+                if let found = walk(child) { return found }
             }
-            return false
+            return nil
         }
         return walk(root)
+    }
+
+    func containsMarkdown() -> Bool {
+        firstMarkdown() != nil
     }
 
     func markdownFiles() -> [URL] {

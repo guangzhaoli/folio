@@ -32,24 +32,22 @@ final class FolioAppDelegate: NSObject, NSApplicationDelegate {
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }
 
     func application(_ sender: NSApplication, open urls: [URL]) {
-        for url in urls {
-            if url.hasDirectoryPath {
-                FolioDocumentController.folio.openWorkspace(at: url, in: nil)
-            } else {
-                FolioDocumentController.folio.openMarkdown(at: url)
-            }
-        }
+        open(urls)
     }
 
     func application(_ sender: NSApplication, openFile filename: String) -> Bool {
-        let url = URL(fileURLWithPath: filename)
-        var isDirectory: ObjCBool = false
-        FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
-        if isDirectory.boolValue {
-            FolioDocumentController.folio.openWorkspace(at: url, in: nil)
-        } else {
-            FolioDocumentController.folio.openMarkdown(at: url)
-        }
+        open([URL(fileURLWithPath: filename)])
         return true
+    }
+
+    private func open(_ urls: [URL]) {
+        let host = FolioDocumentController.folio.currentWindow()
+        for url in urls {
+            if FolioDocumentController.isDirectory(url) {
+                FolioDocumentController.folio.openWorkspace(at: url, in: host)
+            } else {
+                FolioDocumentController.folio.openMarkdown(at: url, in: host)
+            }
+        }
     }
 }
