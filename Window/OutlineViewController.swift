@@ -1,6 +1,19 @@
 import AppKit
 
-final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
+private final class OutlineDragRecognizer: NSPanGestureRecognizer {
+    private(set) var mouseDownTime: TimeInterval = 0
+
+    override func mouseDown(with event: NSEvent) {
+        mouseDownTime = event.timestamp
+        super.mouseDown(with: event)
+    }
+
+    var holdDuration: TimeInterval {
+        (NSApp.currentEvent?.timestamp ?? mouseDownTime) - mouseDownTime
+    }
+}
+
+final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSGestureRecognizerDelegate {
     var items: [OutlineItem] = [] {
         didSet { reload() }
     }
@@ -17,7 +30,9 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
     private let crumbStack = NSStackView()
     private var emptyLabel: NSTextField?
     private var crumbs: [OutlineItem] = []
+    private var focusedLine = 1
     private var dockDragging = false
+    private var suppressClick = false
 
     override func loadView() {
         let empty = NSTextField(labelWithString: "No headings")
@@ -54,26 +69,16 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         crumbScroll.translatesAutoresizingMaskIntoConstraints = false
         crumbScroll.documentView = crumbStack
         NSLayoutConstraint.activate([
-            crumbStack.leadingAnchor.constraint(equalTo: crumbScroll.contentView.leadingAnchor, constant: 22),
+            crumbStack.leadingAnchor.constraint(equalTo: crumbScroll.contentView.leadingAnchor, constant: 8),
             crumbStack.topAnchor.constraint(equalTo: crumbScroll.contentView.topAnchor),
             crumbStack.bottomAnchor.constraint(equalTo: crumbScroll.contentView.bottomAnchor),
             crumbStack.heightAnchor.constraint(equalTo: crumbScroll.contentView.heightAnchor),
         ])
 
-        let handle = NSView()
-        handle.translatesAutoresizingMaskIntoConstraints = false
-        let grip = NSImageView()
-        grip.image = NSImage(systemSymbolName: "line.3.horizontal", accessibilityDescription: "Move outline")
-        grip.symbolConfiguration = .init(pointSize: 11, weight: .medium)
-        grip.contentTintColor = .tertiaryLabelColor
-        grip.translatesAutoresizingMaskIntoConstraints = false
-        handle.addSubview(grip)
-
         let wrap = NSView()
         wrap.addSubview(tableScroll)
         wrap.addSubview(crumbScroll)
         wrap.addSubview(empty)
-        wrap.addSubview(handle)
         wrap.menu = makePlacementMenu()
         NSLayoutConstraint.activate([
             tableScroll.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
@@ -84,28 +89,26 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
             crumbScroll.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
             crumbScroll.topAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.topAnchor),
             crumbScroll.bottomAnchor.constraint(equalTo: wrap.bottomAnchor),
-            empty.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 22),
+            empty.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 12),
             empty.centerYAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.centerYAnchor),
-            handle.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
-            handle.centerYAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.centerYAnchor),
-            handle.widthAnchor.constraint(equalToConstant: 20),
-            handle.heightAnchor.constraint(equalToConstant: 20),
-            grip.centerXAnchor.constraint(equalTo: handle.centerXAnchor),
-            grip.centerYAnchor.constraint(equalTo: handle.centerYAnchor),
-            grip.widthAnchor.constraint(equalToConstant: 14),
-            grip.heightAnchor.constraint(equalToConstant: 14),
         ])
-        handle.addGestureRecognizer(NSPanGestureRecognizer(target: self, action: #selector(headerPanned(_:))))
+        let drag = OutlineDragRecognizer(target: self, action: #selector(treeDragged(_:)))
+        drag.delegate = self
+        drag.delaysPrimaryMouseButtonEvents = false
+        wrap.addGestureRecognizer(drag)
         view = wrap
         applyMode()
         reload()
     }
 
     func focus(sourceLine: Int) {
+        focusedLine = sourceLine
         let next = OutlineItem.path(in: items, throughLine: sourceLine)
-        guard next.map(\.id) != crumbs.map(\.id) else { return }
-        crumbs = next
-        rebuildCrumbs()
+        if next.map(\.id) != crumbs.map(\.id) {
+            crumbs = next
+            rebuildCrumbs()
+        }
+        highlightCurrentRow()
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int { items.count }
@@ -130,14 +133,22 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         let item = items[row]
         let pad = String(repeating: "  ", count: max(0, item.level - 1))
         cell.textField?.stringValue = pad + item.title
-        cell.textField?.font = item.level <= 1
+        let current = crumbs.last
+        let isCurrent = current?.id == item.id
+        cell.textField?.font = isCurrent || item.level <= 1
             ? .systemFont(ofSize: 12, weight: .semibold)
             : .systemFont(ofSize: 12)
-        cell.textField?.textColor = item.level <= 2 ? .labelColor : .secondaryLabelColor
+        cell.textField?.textColor = isCurrent
+            ? .controlAccentColor
+            : (item.level <= 2 ? .labelColor : .secondaryLabelColor)
         return cell
     }
 
     @objc private func clicked() {
+        if suppressClick {
+            suppressClick = false
+            return
+        }
         let row = tableView.clickedRow
         guard row >= 0, row < items.count else { return }
         onSelect?(items[row])
@@ -163,12 +174,18 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         onSelect?(items[sender.tag])
     }
 
-    @objc private func headerPanned(_ gesture: NSPanGestureRecognizer) {
+    @objc private func treeDragged(_ gesture: OutlineDragRecognizer) {
         let point = gesture.location(in: view.window?.contentView)
+        let translation = gesture.translation(in: view)
+        let distance = hypot(translation.x, translation.y)
         switch gesture.state {
-        case .changed:
-            if !dockDragging, hypot(gesture.translation(in: view).x, gesture.translation(in: view).y) > 6 {
+        case .began, .changed:
+            if !dockDragging {
+                let held = gesture.holdDuration >= 0.16
+                let sideways = abs(translation.x) >= abs(translation.y)
+                guard distance > 8, held || sideways || showsBreadcrumb else { return }
                 dockDragging = true
+                suppressClick = true
                 onDockDrag?(.began, point)
             }
             if dockDragging { onDockDrag?(.changed, point) }
@@ -178,6 +195,13 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         default:
             break
         }
+    }
+
+    func gestureRecognizer(
+        _ gestureRecognizer: NSGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: NSGestureRecognizer
+    ) -> Bool {
+        true
     }
 
     @objc private func placeBelow() { onChoosePlacement?(.belowLibrary) }
@@ -192,18 +216,24 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
 
     private func reload() {
         emptyLabel?.isHidden = !items.isEmpty
+        crumbs = OutlineItem.path(in: items, throughLine: focusedLine)
         tableView.reloadData()
-        if showsBreadcrumb {
-            if crumbs.isEmpty, let first = items.first {
-                crumbs = [first]
-            } else {
-                crumbs = OutlineItem.path(
-                    in: items,
-                    throughLine: crumbs.last?.span.startLine ?? items.last?.span.startLine ?? 1
-                )
-            }
-        }
         rebuildCrumbs()
+        highlightCurrentRow()
+    }
+
+    private func highlightCurrentRow() {
+        guard !showsBreadcrumb, let current = crumbs.last,
+              let row = items.firstIndex(where: { $0.id == current.id })
+        else { return }
+        if tableView.selectedRow != row {
+            tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+            tableView.reloadData()
+        }
+        let visible = tableView.rows(in: tableView.visibleRect)
+        if !NSLocationInRange(row, visible) {
+            tableView.scrollRowToVisible(row)
+        }
     }
 
     private func rebuildCrumbs() {
