@@ -24,7 +24,7 @@ final class EmptyStateView: NSView {
 
         let openFile = NSButton(
             title: "Open File…",
-            target: nil,
+            target: FolioDocumentController.folio,
             action: #selector(NSDocumentController.openDocument(_:))
         )
         openFile.bezelStyle = .rounded
