@@ -460,19 +460,16 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             guard let belowDock, let libraryHost else { return }
             belowDock.isHidden = false
             belowDockHeight?.constant = 200
-            outlineController.axis = .vertical
             embed(outlineController, in: belowDock, parent: libraryHost)
             sidebarItem?.isCollapsed = false
         case .top:
             guard let topDock, let editorHost else { return }
             topDock.isHidden = false
-            topDockHeight?.constant = 84
-            outlineController.axis = .horizontal
+            topDockHeight?.constant = 176
             embed(outlineController, in: topDock, parent: editorHost)
         case .trailing:
             guard let host = trailingHost else { return }
             inspectorItem?.isCollapsed = false
-            outlineController.axis = .vertical
             embed(outlineController, in: host.view, parent: host)
         }
         librarySplit?.adjustSubviews()
@@ -550,9 +547,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         return [
             .top: NSRect(
                 x: sidebarWidth + 8,
-                y: bounds.height - safe.top - 92,
+                y: bounds.height - safe.top - 184,
                 width: max(160, bounds.width - sidebarWidth - 16),
-                height: 80
+                height: 168
             ),
             .trailing: NSRect(
                 x: bounds.width - 208,
