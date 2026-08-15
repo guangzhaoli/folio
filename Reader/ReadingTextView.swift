@@ -3,6 +3,8 @@ import AppKit
 final class ReadingTextView: NSTextView {
     var onAppearanceChange: (() -> Void)?
     var onMeasureChange: ((CGFloat) -> Void)?
+    var baseDirectory: URL?
+    var onOpenLink: ((String) -> Void)?
 
     private var lastUsableWidth: CGFloat = 0
 
@@ -16,6 +18,17 @@ final class ReadingTextView: NSTextView {
     static func usableWidth(in boundsWidth: CGFloat, cap: CGFloat = columnCap, margin: CGFloat = columnMargin) -> CGFloat {
         guard boundsWidth > 1 else { return min(cap, 720) }
         return max(280, min(cap, boundsWidth - margin * 2))
+    }
+
+    override func clicked(onLink link: Any, at charIndex: Int) {
+        if let dest = textStorage?.attribute(PathResolver.destinationKey, at: charIndex, effectiveRange: nil) as? String {
+            onOpenLink?(dest)
+            return
+        }
+        if let url = link as? URL, url.scheme != "folio" {
+            onOpenLink?(url.absoluteString)
+            return
+        }
     }
 
     override func viewDidChangeEffectiveAppearance() {

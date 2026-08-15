@@ -155,6 +155,65 @@ final class FolioDocumentController: NSDocumentController {
         openWorkspace(at: file.deletingLastPathComponent(), in: window)
     }
 
+    func openLink(_ destination: String, from window: MainWindowController) {
+        let base = window.markdownDocument?.fileURL?.deletingLastPathComponent()
+        switch PathResolver.resolve(destination: destination, baseDirectory: base) {
+        case .invalid:
+            break
+        case .remote(let url), .mail(let url):
+            NSWorkspace.shared.open(url)
+        case .fragmentOnly(let fragment):
+            window.jumpToFragment(fragment)
+        case .localFile(let url, let fragment):
+            if PathResolver.isMarkdown(url) {
+                openMarkdownDestination(url, fragment: fragment, from: window)
+            } else {
+                openLocalFile(url, from: window)
+            }
+        }
+    }
+
+    private func openMarkdownDestination(_ url: URL, fragment: String?, from window: MainWindowController) {
+        let target = url.standardizedFileURL
+        if let existing = document(for: target) as? MarkdownDocument,
+           let other = existing.windowControllers.first as? MainWindowController {
+            other.pendingFragment = fragment
+            other.showWindow(nil)
+            other.showEditor(for: existing)
+            return
+        }
+        if let root = window.workspace?.rootURL, PathResolver.isInside(target, roots: [root]) {
+            window.pendingFragment = fragment
+            replaceDocument(in: window, with: target)
+            return
+        }
+        let newWindow = MainWindowController()
+        newWindow.pendingFragment = fragment
+        openMarkdown(at: target, in: newWindow)
+    }
+
+    private func openLocalFile(_ url: URL, from window: MainWindowController) {
+        let roots = [
+            window.workspace?.rootURL,
+            window.markdownDocument?.fileURL?.deletingLastPathComponent(),
+        ].compactMap { $0 }
+        if PathResolver.isInside(url, roots: roots), PathResolver.isAllowlistedLocal(url) {
+            NSWorkspace.shared.open(url)
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = "Open “\(url.lastPathComponent)” outside the folder?"
+        alert.informativeText = url.path
+        alert.addButton(withTitle: "Open")
+        alert.addButton(withTitle: "Cancel")
+        guard let sheet = window.window else { return }
+        alert.beginSheetModal(for: sheet) { response in
+            if response == .alertFirstButtonReturn {
+                NSWorkspace.shared.open(url)
+            }
+        }
+    }
+
     func openInNewWindow(_ url: URL, workspaceRoot: URL?) {
         let target = url.standardizedFileURL
         if let existing = document(for: target) as? MarkdownDocument {

@@ -1,5 +1,22 @@
 import AppKit
 
+enum ImageCache {
+    private static let cache: NSCache<NSURL, NSImage> = {
+        let cache = NSCache<NSURL, NSImage>()
+        cache.totalCostLimit = 32 * 1024 * 1024
+        return cache
+    }()
+
+    static func image(at url: URL) -> NSImage? {
+        let key = url.standardizedFileURL as NSURL
+        if let cached = cache.object(forKey: key) { return cached }
+        guard let image = NSImage(contentsOf: url) else { return nil }
+        let cost = Int(max(image.size.width, 1) * max(image.size.height, 1) * 4)
+        cache.setObject(image, forKey: key, cost: cost)
+        return image
+    }
+}
+
 struct ReadingDocument {
     var text: NSAttributedString
     var blockCharRanges: [BlockID: NSRange]
@@ -28,10 +45,10 @@ enum ReadingRenderer {
         let start = output.length
         switch node.kind {
         case .heading(let level):
-            appendInlines(node.inlines, to: output, attributes: headingAttrs(level: level, style: style), baseDirectory: baseDirectory)
+            appendInlines(node.inlines, to: output, attributes: headingAttrs(level: level, style: style), baseDirectory: baseDirectory, maxWidth: style.measure)
             output.append(breakAfter(style.headingSpaceAfter(level)))
         case .paragraph:
-            appendInlines(node.inlines, to: output, attributes: bodyAttrs(style: style, indent: CGFloat(listDepth) * style.listStep), baseDirectory: baseDirectory)
+            appendInlines(node.inlines, to: output, attributes: bodyAttrs(style: style, indent: CGFloat(listDepth) * style.listStep), baseDirectory: baseDirectory, maxWidth: style.measure)
             output.append(breakAfter(listDepth > 0 ? 3 : 12))
         case .list(let ordered):
             var index = 1
@@ -96,7 +113,8 @@ enum ReadingRenderer {
                         cell.inlines,
                         to: piece,
                         attributes: isHeader ? headerCellAttrs(style: style) : bodyAttrs(style: style, indent: 0),
-                        baseDirectory: baseDirectory
+                        baseDirectory: baseDirectory,
+                        maxWidth: style.measure
                     )
                     cells.append(piece)
                 }
@@ -109,7 +127,7 @@ enum ReadingRenderer {
         case .tableRow, .tableCell:
             break
         case .html:
-            appendInlines(node.inlines, to: output, attributes: monoAttrs(style: style), baseDirectory: baseDirectory)
+            appendInlines(node.inlines, to: output, attributes: monoAttrs(style: style), baseDirectory: baseDirectory, maxWidth: style.measure)
             output.append(breakAfter(8))
         case .footnoteDefinition:
             for child in node.children {
@@ -154,9 +172,9 @@ enum ReadingRenderer {
         line.append(NSAttributedString(string: marker, attributes: markerAttrs))
 
         if !node.inlines.isEmpty {
-            appendInlines(node.inlines, to: line, attributes: hanging, baseDirectory: baseDirectory)
+            appendInlines(node.inlines, to: line, attributes: hanging, baseDirectory: baseDirectory, maxWidth: style.measure)
         } else if let paragraph = node.children.first, case .paragraph = paragraph.kind {
-            appendInlines(paragraph.inlines, to: line, attributes: hanging, baseDirectory: baseDirectory)
+            appendInlines(paragraph.inlines, to: line, attributes: hanging, baseDirectory: baseDirectory, maxWidth: style.measure)
         }
         line.append(NSAttributedString(string: "\n", attributes: hanging))
         output.append(line)
@@ -227,7 +245,8 @@ enum ReadingRenderer {
         _ inlines: [InlineNode],
         to output: NSMutableAttributedString,
         attributes: [NSAttributedString.Key: Any],
-        baseDirectory: URL?
+        baseDirectory: URL?,
+        maxWidth: CGFloat
     ) {
         for inline in inlines {
             switch inline {
@@ -247,39 +266,33 @@ enum ReadingRenderer {
                 var attrs = attributes
                 let font = (attributes[.font] as? NSFont) ?? NSFont.systemFont(ofSize: 17)
                 attrs[.font] = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
-                appendInlines(children, to: output, attributes: attrs, baseDirectory: baseDirectory)
+                appendInlines(children, to: output, attributes: attrs, baseDirectory: baseDirectory, maxWidth: maxWidth)
             case .emphasis(let children):
                 var attrs = attributes
                 let font = (attributes[.font] as? NSFont) ?? NSFont.systemFont(ofSize: 17)
                 attrs[.font] = NSFontManager.shared.convert(font, toHaveTrait: .italicFontMask)
-                appendInlines(children, to: output, attributes: attrs, baseDirectory: baseDirectory)
+                appendInlines(children, to: output, attributes: attrs, baseDirectory: baseDirectory, maxWidth: maxWidth)
             case .strikethrough(let children):
                 var attrs = attributes
                 attrs[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
-                appendInlines(children, to: output, attributes: attrs, baseDirectory: baseDirectory)
+                appendInlines(children, to: output, attributes: attrs, baseDirectory: baseDirectory, maxWidth: maxWidth)
             case .link(let destination, let children):
                 var attrs = attributes
                 attrs[.foregroundColor] = NSColor.linkColor
                 attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
-                if let url = URL(string: destination) {
-                    attrs[.link] = url
-                } else if let baseDirectory {
-                    attrs[.link] = URL(fileURLWithPath: destination, relativeTo: baseDirectory)
-                }
-                appendInlines(children, to: output, attributes: attrs, baseDirectory: baseDirectory)
+                attrs[.cursor] = NSCursor.pointingHand
+                attrs[PathResolver.destinationKey] = destination
+                attrs[.link] = URL(string: "folio://link")
+                appendInlines(children, to: output, attributes: attrs, baseDirectory: baseDirectory, maxWidth: maxWidth)
             case .image(let destination, let alt):
-                if let image = loadImage(destination, baseDirectory: baseDirectory) {
-                    let attachment = NSTextAttachment()
-                    attachment.image = image
-                    let maxWidth: CGFloat = 560
-                    if image.size.width > maxWidth {
-                        let scale = maxWidth / image.size.width
-                        attachment.bounds = CGRect(x: 0, y: 0, width: maxWidth, height: image.size.height * scale)
-                    }
-                    output.append(NSAttributedString(attachment: attachment))
-                } else {
-                    output.append(NSAttributedString(string: alt.isEmpty ? "[image]" : alt, attributes: attributes))
-                }
+                appendImage(
+                    destination: destination,
+                    alt: alt,
+                    attributes: attributes,
+                    baseDirectory: baseDirectory,
+                    maxWidth: maxWidth,
+                    to: output
+                )
             case .html(let html):
                 output.append(NSAttributedString(string: html, attributes: attributes))
             case .footnoteReference(let label):
@@ -292,14 +305,39 @@ enum ReadingRenderer {
         }
     }
 
-    private static func loadImage(_ destination: String, baseDirectory: URL?) -> NSImage? {
-        if destination.hasPrefix("http://") || destination.hasPrefix("https://") || destination.hasPrefix("file:") {
-            return nil
+    private static func appendImage(
+        destination: String,
+        alt: String,
+        attributes: [NSAttributedString.Key: Any],
+        baseDirectory: URL?,
+        maxWidth: CGFloat,
+        to output: NSMutableAttributedString
+    ) {
+        switch PathResolver.resolve(destination: destination, baseDirectory: baseDirectory) {
+        case .remote:
+            var attrs = attributes
+            attrs[.foregroundColor] = NSColor.tertiaryLabelColor
+            output.append(NSAttributedString(string: "Remote image omitted", attributes: attrs))
+        case .localFile(let url, _):
+            if let image = ImageCache.image(at: url) {
+                let attachment = NSTextAttachment()
+                attachment.image = image
+                if image.size.width > maxWidth, image.size.width > 0 {
+                    let scale = maxWidth / image.size.width
+                    attachment.bounds = CGRect(x: 0, y: 0, width: maxWidth, height: image.size.height * scale)
+                }
+                output.append(NSAttributedString(attachment: attachment))
+            } else {
+                var attrs = attributes
+                attrs[.foregroundColor] = NSColor.tertiaryLabelColor
+                let label = alt.isEmpty ? url.lastPathComponent : "\(alt) — \(url.lastPathComponent)"
+                output.append(NSAttributedString(string: "[\(label)]", attributes: attrs))
+            }
+        default:
+            var attrs = attributes
+            attrs[.foregroundColor] = NSColor.tertiaryLabelColor
+            output.append(NSAttributedString(string: alt.isEmpty ? "[image]" : "[\(alt)]", attributes: attrs))
         }
-        guard let baseDirectory else { return nil }
-        let decoded = destination.removingPercentEncoding ?? destination
-        let url = URL(fileURLWithPath: decoded, relativeTo: baseDirectory).standardizedFileURL
-        return NSImage(contentsOf: url)
     }
 
     private static func bodyAttrs(style: ReaderStyle, indent: CGFloat) -> [NSAttributedString.Key: Any] {

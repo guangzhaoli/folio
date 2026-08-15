@@ -55,6 +55,8 @@
 		A10000000000000000000073 /* Workspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000072 /* Workspace.swift */; };
 		A10000000000000000000075 /* SidebarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000074 /* SidebarViewController.swift */; };
 		A10000000000000000000077 /* WorkspaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000076 /* WorkspaceTests.swift */; };
+		A10000000000000000000082 /* PathResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000081 /* PathResolver.swift */; };
+		A10000000000000000000084 /* LinkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000083 /* LinkTests.swift */; };
 		A1B2C3D4E5F6000000000021 /* FolioAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000020 /* FolioAppDelegate.swift */; };
 		A1B2C3D4E5F6000000000023 /* FolioDocumentController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000022 /* FolioDocumentController.swift */; };
 		A1B2C3D4E5F6000000000025 /* UpdateChecking.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000024 /* UpdateChecking.swift */; };
@@ -90,6 +92,8 @@
 		A10000000000000000000011 /* WindowChromeState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChromeState.swift; sourceTree = "<group>"; };
 		A10000000000000000000078 /* OutlineDropOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlineDropOverlay.swift; sourceTree = "<group>"; };
 		A1000000000000000000007A /* ChromeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromeTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000081 /* PathResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathResolver.swift; sourceTree = "<group>"; };
+		A10000000000000000000083 /* LinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkTests.swift; sourceTree = "<group>"; };
 		C10000000000000000000000 /* arena.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = arena.c; sourceTree = "<group>"; };
 		C10000000000000000000001 /* blocks.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = blocks.c; sourceTree = "<group>"; };
 		C10000000000000000000002 /* buffer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = buffer.c; sourceTree = "<group>"; };
@@ -217,6 +221,7 @@
 				A1B2C3D4E5F6000000000030 /* EncodingDetector.swift */,
 				A10000000000000000000070 /* FileNode.swift */,
 				A10000000000000000000072 /* Workspace.swift */,
+				A10000000000000000000081 /* PathResolver.swift */,
 			);
 			path = Document;
 			sourceTree = "<group>";
@@ -228,6 +233,7 @@
 				A10000000000000000000060 /* ParseTests */,
 				A10000000000000000000080 /* WorkspaceTests */,
 				A1000000000000000000007C /* ChromeTests */,
+				A10000000000000000000085 /* LinkTests */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -346,6 +352,14 @@
 				A1000000000000000000007A /* ChromeTests.swift */,
 			);
 			path = ChromeTests;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000085 /* LinkTests */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000083 /* LinkTests.swift */,
+			);
+			path = LinkTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -499,6 +513,7 @@
 				A1B2C3D4E5F6000000000033 /* MarkdownDocument.swift in Sources */,
 				A10000000000000000000071 /* FileNode.swift in Sources */,
 				A10000000000000000000073 /* Workspace.swift in Sources */,
+				A10000000000000000000082 /* PathResolver.swift in Sources */,
 				A10000000000000000000075 /* SidebarViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -511,6 +526,7 @@
 				A10000000000000000000022 /* ParseTests.swift in Sources */,
 				A10000000000000000000077 /* WorkspaceTests.swift in Sources */,
 				A1000000000000000000007B /* ChromeTests.swift in Sources */,
+				A10000000000000000000084 /* LinkTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -19,6 +19,8 @@ Double-click a `.md` file to open it in Folio. Folio registers as the default ha
 
 **File → Open Folder…** (⌥⌘O) or drop a folder on the Dock icon to show a library sidebar. Click a `.md` file to replace the document in the same window. Hidden files, `.git`, `node_modules`, and other vendor directories are skipped.
 
+Relative links and images resolve from the file’s directory. Clicking a `.md` link opens it in Folio; `http(s)` and `mailto` use the system. Remote images are not downloaded.
+
 Saves are always UTF-8 without a BOM. Files larger than 50 MB are refused.
 
 ## License
