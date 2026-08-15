@@ -71,4 +71,17 @@ final class ParseTests: XCTestCase {
         }
         XCTAssertGreaterThanOrEqual(count, 2, "quote and table should be native block attachments")
     }
+
+    func testListUsesHangingIndent() {
+        let snap = MarkdownParser.parse(text: "- first item that wraps\n- second\n", generation: 1)
+        let doc = ReadingRenderer.render(snapshot: snap, baseDirectory: nil, style: .default)
+        var foundHang = false
+        doc.text.enumerateAttribute(.paragraphStyle, in: NSRange(location: 0, length: doc.text.length)) { value, _, _ in
+            guard let style = value as? NSParagraphStyle else { return }
+            if style.headIndent > style.firstLineHeadIndent {
+                foundHang = true
+            }
+        }
+        XCTAssertTrue(foundHang)
+    }
 }

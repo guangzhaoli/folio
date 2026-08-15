@@ -9,42 +9,40 @@ enum BlockChrome {
     }
 
     static func tableImage(rows: [[NSAttributedString]], headerRows: Int, maxWidth: CGFloat) -> NSImage {
-        let padX: CGFloat = 10
-        let padY: CGFloat = 7
+        let padX: CGFloat = 12
+        let padY: CGFloat = 8
         let columns = rows.map(\.count).max() ?? 0
         guard columns > 0, !rows.isEmpty else {
             return NSImage(size: NSSize(width: 1, height: 1))
         }
 
-        var colWidths = Array(repeating: CGFloat(56), count: columns)
+        let minCol: CGFloat = 52
+        let maxCol = max(minCol, floor((maxWidth - 2) / CGFloat(columns)))
+        var colWidths = Array(repeating: minCol, count: columns)
         var rowHeights = Array(repeating: CGFloat(0), count: rows.count)
+
         for (r, row) in rows.enumerated() {
             for (c, cell) in row.enumerated() where c < columns {
                 let size = cell.boundingRect(
-                    with: NSSize(width: maxWidth, height: 4000),
+                    with: NSSize(width: maxCol - padX * 2, height: 4000),
                     options: [.usesLineFragmentOrigin, .usesFontLeading]
                 ).integral.size
-                colWidths[c] = max(colWidths[c], size.width + padX * 2)
-                rowHeights[r] = max(rowHeights[r], size.height + padY * 2)
+                colWidths[c] = min(maxCol, max(colWidths[c], size.width + padX * 2))
+                rowHeights[r] = max(rowHeights[r], max(28, size.height + padY * 2))
             }
         }
 
         var total = colWidths.reduce(0, +)
-        let width = min(maxWidth, max(total, 160))
-        if total > width {
-            let scale = width / total
+        if total > maxWidth {
+            let scale = maxWidth / total
             colWidths = colWidths.map { $0 * scale }
-            total = width
-        } else if total < width {
-            colWidths[colWidths.count - 1] += width - total
-            total = width
+            total = maxWidth
         }
-        let height = rowHeights.reduce(0, +)
 
+        let height = rowHeights.reduce(0, +)
         return draw(size: NSSize(width: total, height: height)) { _ in
             let bounds = NSRect(origin: .zero, size: NSSize(width: total, height: height))
-            NSColor.separatorColor.withAlphaComponent(0.35).setStroke()
-            let clip = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 10, yRadius: 10)
+            let clip = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 12, yRadius: 12)
             clip.addClip()
             NSColor.textBackgroundColor.setFill()
             clip.fill()
@@ -54,18 +52,25 @@ enum BlockChrome {
                 var x: CGFloat = 0
                 let rowRect = NSRect(x: 0, y: y, width: total, height: rowHeights[r])
                 if r < headerRows {
-                    NSColor.quaternaryLabelColor.withAlphaComponent(0.16).setFill()
-                    rowRect.fill()
-                } else if r % 2 == 1 {
-                    NSColor.quaternaryLabelColor.withAlphaComponent(0.06).setFill()
+                    NSColor.quaternaryLabelColor.withAlphaComponent(0.22).setFill()
                     rowRect.fill()
                 }
+                if r > 0 {
+                    NSColor.separatorColor.withAlphaComponent(0.35).setStroke()
+                    let line = NSBezierPath()
+                    line.lineWidth = 1
+                    line.move(to: NSPoint(x: 0, y: y + 0.5))
+                    line.line(to: NSPoint(x: total, y: y + 0.5))
+                    line.stroke()
+                }
                 for c in 0..<columns {
-                    let cellRect = NSRect(x: x, y: y, width: colWidths[c], height: rowHeights[r])
-                    NSColor.separatorColor.withAlphaComponent(0.28).setStroke()
-                    NSBezierPath.stroke(cellRect.insetBy(dx: 0.25, dy: 0.25))
                     if c < row.count {
-                        let textRect = cellRect.insetBy(dx: padX, dy: padY)
+                        let textRect = NSRect(
+                            x: x + padX,
+                            y: y + padY,
+                            width: colWidths[c] - padX * 2,
+                            height: rowHeights[r] - padY * 2
+                        )
                         row[c].draw(with: textRect, options: [.usesLineFragmentOrigin, .usesFontLeading])
                     }
                     x += colWidths[c]
@@ -73,50 +78,67 @@ enum BlockChrome {
                 y += rowHeights[r]
             }
 
-            NSColor.separatorColor.withAlphaComponent(0.45).setStroke()
+            NSColor.separatorColor.withAlphaComponent(0.4).setStroke()
             clip.lineWidth = 1
             clip.stroke()
         }
     }
 
-    static func quoteImage(content: NSAttributedString, maxWidth: CGFloat) -> NSImage {
-        let inset = NSEdgeInsets(top: 10, left: 18, bottom: 10, right: 14)
+    static func quoteImage(content: NSAttributedString, depth: Int, maxWidth: CGFloat) -> NSImage {
+        let bars = max(1, depth)
+        let barPitch: CGFloat = 7
+        let inset = NSEdgeInsets(top: 10, left: 12 + CGFloat(bars) * barPitch, bottom: 10, right: 14)
         let textWidth = max(120, maxWidth - inset.left - inset.right)
         let textSize = content.boundingRect(
             with: NSSize(width: textWidth, height: 8000),
             options: [.usesLineFragmentOrigin, .usesFontLeading]
         ).integral.size
-        let size = NSSize(width: min(maxWidth, textSize.width + inset.left + inset.right), height: textSize.height + inset.top + inset.bottom)
+        let width = min(maxWidth, max(textSize.width + inset.left + inset.right, 180))
+        let size = NSSize(width: width, height: textSize.height + inset.top + inset.bottom)
         return draw(size: size) { _ in
             let bounds = NSRect(origin: .zero, size: size)
-            let fill = NSBezierPath(roundedRect: bounds, xRadius: 10, yRadius: 10)
-            NSColor.controlAccentColor.withAlphaComponent(0.08).setFill()
-            fill.fill()
-            let bar = NSBezierPath(roundedRect: NSRect(x: 5, y: 8, width: 3, height: size.height - 16), xRadius: 1.5, yRadius: 1.5)
-            NSColor.controlAccentColor.setFill()
-            bar.fill()
-            let textRect = NSRect(x: inset.left, y: inset.top, width: textWidth, height: textSize.height)
-            content.draw(with: textRect, options: [.usesLineFragmentOrigin, .usesFontLeading])
+            NSColor.quaternaryLabelColor.withAlphaComponent(0.10).setFill()
+            NSBezierPath(roundedRect: bounds, xRadius: 10, yRadius: 10).fill()
+            for i in 0..<bars {
+                let x = 6 + CGFloat(i) * barPitch
+                let bar = NSBezierPath(
+                    roundedRect: NSRect(x: x, y: 8, width: 3, height: size.height - 16),
+                    xRadius: 1.5,
+                    yRadius: 1.5
+                )
+                NSColor.controlAccentColor.withAlphaComponent(i == 0 ? 1 : 0.45).setFill()
+                bar.fill()
+            }
+            content.draw(
+                with: NSRect(x: inset.left, y: inset.top, width: textWidth, height: textSize.height),
+                options: [.usesLineFragmentOrigin, .usesFontLeading]
+            )
         }
     }
 
     static func codeImage(code: String, style: ReaderStyle, maxWidth: CGFloat) -> NSImage {
-        let font = NSFont.monospacedSystemFont(ofSize: style.bodyPointSize - 1.5, weight: .regular)
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: NSColor.labelColor,
-        ]
-        let content = NSAttributedString(string: code.hasSuffix("\n") ? String(code.dropLast()) : code, attributes: attrs)
+        let font = NSFont.monospacedSystemFont(ofSize: style.bodyPointSize - 2, weight: .regular)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineHeightMultiple = 1.28
+        let content = NSAttributedString(
+            string: code.hasSuffix("\n") ? String(code.dropLast()) : code,
+            attributes: [
+                .font: font,
+                .foregroundColor: NSColor.labelColor,
+                .paragraphStyle: paragraph,
+            ]
+        )
         let inset = NSEdgeInsets(top: 12, left: 14, bottom: 12, right: 14)
-        let textWidth = max(160, maxWidth - inset.left - inset.right)
+        let textWidth = max(80, maxWidth - inset.left - inset.right)
         let textSize = content.boundingRect(
             with: NSSize(width: textWidth, height: 8000),
             options: [.usesLineFragmentOrigin, .usesFontLeading]
         ).integral.size
-        let size = NSSize(width: maxWidth, height: textSize.height + inset.top + inset.bottom)
+        let width = min(maxWidth, max(textSize.width + inset.left + inset.right, 120))
+        let size = NSSize(width: width, height: textSize.height + inset.top + inset.bottom)
         return draw(size: size) { _ in
             let bounds = NSRect(origin: .zero, size: size)
-            NSColor.quaternaryLabelColor.withAlphaComponent(0.14).setFill()
+            NSColor.quaternaryLabelColor.withAlphaComponent(0.12).setFill()
             NSBezierPath(roundedRect: bounds, xRadius: 10, yRadius: 10).fill()
             content.draw(
                 with: NSRect(x: inset.left, y: inset.top, width: textWidth, height: textSize.height),
