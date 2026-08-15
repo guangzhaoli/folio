@@ -460,16 +460,19 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             guard let belowDock, let libraryHost else { return }
             belowDock.isHidden = false
             belowDockHeight?.constant = 200
+            outlineController.showsHorizontalTree = false
             embed(outlineController, in: belowDock, parent: libraryHost)
             sidebarItem?.isCollapsed = false
         case .top:
             guard let topDock, let editorHost else { return }
             topDock.isHidden = false
-            topDockHeight?.constant = 176
+            topDockHeight?.constant = 168
+            outlineController.showsHorizontalTree = true
             embed(outlineController, in: topDock, parent: editorHost)
         case .trailing:
             guard let host = trailingHost else { return }
             inspectorItem?.isCollapsed = false
+            outlineController.showsHorizontalTree = false
             embed(outlineController, in: host.view, parent: host)
         }
         librarySplit?.adjustSubviews()
