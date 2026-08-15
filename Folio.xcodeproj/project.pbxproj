@@ -14,7 +14,20 @@
 		A1B2C3D4E5F600000000002B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F600000000002A /* Assets.xcassets */; };
 		A1B2C3D4E5F600000000002D /* MainWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F600000000002C /* MainWindowController.swift */; };
 		A1B2C3D4E5F600000000002F /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F600000000002E /* EmptyStateView.swift */; };
+		A1B2C3D4E5F6000000000031 /* EncodingDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000030 /* EncodingDetector.swift */; };
+		A1B2C3D4E5F6000000000033 /* MarkdownDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000032 /* MarkdownDocument.swift */; };
+		A1B2C3D4E5F6000000000036 /* EncodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000035 /* EncodingTests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A1B2C3D4E5F6000000000041 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A1B2C3D4E5F6000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A1B2C3D4E5F6000000000006;
+			remoteInfo = Folio;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		A1B2C3D4E5F6000000000007 /* Folio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Folio.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -27,10 +40,21 @@
 		A1B2C3D4E5F600000000002A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1B2C3D4E5F600000000002C /* MainWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowController.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F600000000002E /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000000000030 /* EncodingDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncodingDetector.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000000000032 /* MarkdownDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownDocument.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000000000035 /* EncodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncodingTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000000000039 /* FolioTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FolioTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A1B2C3D4E5F600000000000A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1B2C3D4E5F600000000003C /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -45,6 +69,8 @@
 			children = (
 				A1B2C3D4E5F6000000000004 /* App */,
 				A1B2C3D4E5F6000000000005 /* Window */,
+				A1B2C3D4E5F6000000000034 /* Document */,
+				A1B2C3D4E5F6000000000037 /* Tests */,
 				A1B2C3D4E5F6000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -53,6 +79,7 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F6000000000007 /* Folio.app */,
+				A1B2C3D4E5F6000000000039 /* FolioTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -80,6 +107,31 @@
 			path = Window;
 			sourceTree = "<group>";
 		};
+		A1B2C3D4E5F6000000000034 /* Document */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F6000000000032 /* MarkdownDocument.swift */,
+				A1B2C3D4E5F6000000000030 /* EncodingDetector.swift */,
+			);
+			path = Document;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F6000000000037 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F6000000000038 /* EncodingTests */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F6000000000038 /* EncodingTests */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F6000000000035 /* EncodingTests.swift */,
+			);
+			path = EncodingTests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -100,6 +152,24 @@
 			productReference = A1B2C3D4E5F6000000000007 /* Folio.app */;
 			productType = "com.apple.product-type.application";
 		};
+		A1B2C3D4E5F600000000003A /* FolioTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1B2C3D4E5F6000000000040 /* Build configuration list for PBXNativeTarget "FolioTests" */;
+			buildPhases = (
+				A1B2C3D4E5F600000000003B /* Sources */,
+				A1B2C3D4E5F600000000003C /* Frameworks */,
+				A1B2C3D4E5F600000000003D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A1B2C3D4E5F6000000000042 /* PBXTargetDependency */,
+			);
+			name = FolioTests;
+			productName = FolioTests;
+			productReference = A1B2C3D4E5F6000000000039 /* FolioTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -112,6 +182,10 @@
 				TargetAttributes = {
 					A1B2C3D4E5F6000000000006 = {
 						CreatedOnToolsVersion = 15.0;
+					};
+					A1B2C3D4E5F600000000003A = {
+						CreatedOnToolsVersion = 15.0;
+						TestTargetID = A1B2C3D4E5F6000000000006;
 					};
 				};
 			};
@@ -129,6 +203,7 @@
 			projectRoot = "";
 			targets = (
 				A1B2C3D4E5F6000000000006 /* Folio */,
+				A1B2C3D4E5F600000000003A /* FolioTests */,
 			);
 		};
 /* End PBXProject section */
@@ -140,6 +215,13 @@
 			files = (
 				A1B2C3D4E5F6000000000027 /* MainMenu.xib in Resources */,
 				A1B2C3D4E5F600000000002B /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1B2C3D4E5F600000000003D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -155,10 +237,28 @@
 				A1B2C3D4E5F6000000000025 /* UpdateChecking.swift in Sources */,
 				A1B2C3D4E5F600000000002D /* MainWindowController.swift in Sources */,
 				A1B2C3D4E5F600000000002F /* EmptyStateView.swift in Sources */,
+				A1B2C3D4E5F6000000000031 /* EncodingDetector.swift in Sources */,
+				A1B2C3D4E5F6000000000033 /* MarkdownDocument.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1B2C3D4E5F600000000003B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2C3D4E5F6000000000036 /* EncodingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A1B2C3D4E5F6000000000042 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A1B2C3D4E5F6000000000006 /* Folio */;
+			targetProxy = A1B2C3D4E5F6000000000041 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A1B2C3D4E5F600000000000D /* Debug */ = {
@@ -329,6 +429,54 @@
 			};
 			name = Release;
 		};
+		A1B2C3D4E5F600000000003E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.folio.FolioTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Folio.app/Contents/MacOS/Folio";
+			};
+			name = Debug;
+		};
+		A1B2C3D4E5F600000000003F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.folio.FolioTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Folio.app/Contents/MacOS/Folio";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -346,6 +494,15 @@
 			buildConfigurations = (
 				A1B2C3D4E5F600000000000F /* Debug */,
 				A1B2C3D4E5F6000000000010 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1B2C3D4E5F6000000000040 /* Build configuration list for PBXNativeTarget "FolioTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B2C3D4E5F600000000003E /* Debug */,
+				A1B2C3D4E5F600000000003F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
