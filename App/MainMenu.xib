@@ -213,6 +213,12 @@
                                                 <action selector="performFindPanelAction:" target="-1" id="U8a-cS-bd1"/>
                                             </connections>
                                         </menuItem>
+                                        <menuItem title="Find in Folder…" keyEquivalent="F" id="fnd-fld-001">
+                                            <modifierMask key="keyEquivalentModifierMask" shift="YES" command="YES"/>
+                                            <connections>
+                                                <action selector="findInFolder:" target="-1" id="fnd-fld-act"/>
+                                            </connections>
+                                        </menuItem>
                                         <menuItem title="Jump to Selection" keyEquivalent="j" id="S0p-oC-mLd">
                                             <connections>
                                                 <action selector="centerSelectionInVisibleArea:" target="-1" id="IOG-6D-g5B"/>

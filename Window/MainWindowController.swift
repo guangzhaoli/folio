@@ -209,6 +209,22 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             return workspace != nil && markdownDocument?.fileURL != nil
         case #selector(closeFile(_:)):
             return workspace != nil && markdownDocument != nil
+        case #selector(performFindPanelAction(_:)):
+            guard markdownDocument != nil else { return false }
+            if let action = NSTextFinder.Action(rawValue: menuItem.tag) {
+                switch action {
+                case .showReplaceInterface, .replace, .replaceAll, .replaceAndFind:
+                    let target = findTarget()
+                    return target?.isEditable == true && target?.hasMarkedText() == false
+                default:
+                    return findTarget() != nil
+                }
+            }
+            return findTarget() != nil
+        case #selector(centerSelectionInVisibleArea(_:)):
+            return findTarget() != nil
+        case #selector(findInFolder(_:)):
+            return false
         default:
             return true
         }
@@ -244,6 +260,28 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
 
     @objc func closeFile(_ sender: Any?) {
         FolioDocumentController.folio.detachDocument(from: self, resetChrome: true)
+    }
+
+    @objc func performFindPanelAction(_ sender: Any?) {
+        guard let target = findTarget() else { return }
+        window?.makeFirstResponder(target)
+        target.performFindPanelAction(sender)
+    }
+
+    override func centerSelectionInVisibleArea(_ sender: Any?) {
+        findTarget()?.centerSelectionInVisibleArea(sender)
+    }
+
+    @objc func findInFolder(_ sender: Any?) {}
+
+    private func findTarget() -> NSTextView? {
+        if viewMode == .reading { return readingTextView }
+        if viewMode == .source { return sourceTextView }
+        if let first = window?.firstResponder as? NSTextView,
+           first === readingTextView || first === sourceTextView {
+            return first
+        }
+        return sourceTextView ?? readingTextView
     }
 
     @objc private func viewModeToolbarChanged(_ sender: NSSegmentedControl) {
@@ -608,6 +646,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         textView.isRichText = false
         textView.allowsUndo = true
         textView.usesFindBar = true
+        textView.isIncrementalSearchingEnabled = true
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.backgroundColor = .textBackgroundColor
@@ -632,6 +671,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
 
     private func makeReadingScroll() -> NSScrollView {
         let textView = ReadingTextView()
+        textView.usesFindBar = true
+        textView.isIncrementalSearchingEnabled = true
         textView.isEditable = false
         textView.isSelectable = true
         textView.drawsBackground = true

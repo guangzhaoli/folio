@@ -20,6 +20,35 @@ final class ReadingTextView: NSTextView {
         return max(280, min(cap, boundsWidth - margin * 2))
     }
 
+    override func setSelectedRange(_ charRange: NSRange, affinity: NSSelectionAffinity, stillSelecting stillSelectingFlag: Bool) {
+        var range = charRange
+        if !stillSelectingFlag, isFindBarShowing, FindSupport.isAttachmentOnly(string, range: charRange),
+           let pattern = recentFindString(), !pattern.isEmpty {
+            let next = FindSupport.nextMatch(
+                in: string,
+                pattern: pattern,
+                from: NSMaxRange(charRange),
+                backwards: false,
+                wrap: true
+            )
+            if let next, next != charRange {
+                range = next
+            }
+        }
+        super.setSelectedRange(range, affinity: affinity, stillSelecting: stillSelectingFlag)
+    }
+
+    override func performFindPanelAction(_ sender: Any?) {
+        if let item = sender as? NSMenuItem,
+           let action = NSTextFinder.Action(rawValue: item.tag),
+           action == .nextMatch || action == .previousMatch {
+            super.performFindPanelAction(sender)
+            skipAttachmentSelection(backwards: action == .previousMatch)
+            return
+        }
+        super.performFindPanelAction(sender)
+    }
+
     override func clicked(onLink link: Any, at charIndex: Int) {
         if let dest = textStorage?.attribute(PathResolver.destinationKey, at: charIndex, effectiveRange: nil) as? String {
             onOpenLink?(dest)
@@ -63,5 +92,30 @@ final class ReadingTextView: NSTextView {
         guard abs(usable - lastUsableWidth) > 6 else { return }
         lastUsableWidth = usable
         onMeasureChange?(usable)
+    }
+
+    private func skipAttachmentSelection(backwards: Bool) {
+        let text = string
+        let selected = selectedRange()
+        guard FindSupport.isAttachmentOnly(text, range: selected) else { return }
+        let from = backwards ? selected.location : NSMaxRange(selected)
+        guard let next = FindSupport.nextMatch(
+            in: text,
+            pattern: recentFindString() ?? "",
+            from: from,
+            backwards: backwards,
+            wrap: true
+        ), next.location != NSNotFound, next.length > 0 else { return }
+        setSelectedRange(next)
+        scrollRangeToVisible(next)
+    }
+
+    private var isFindBarShowing: Bool {
+        guard let bar = enclosingScrollView?.findBarView else { return false }
+        return bar.superview != nil && bar.isHidden == false
+    }
+
+    private func recentFindString() -> String? {
+        NSPasteboard(name: .find).string(forType: .string)
     }
 }
