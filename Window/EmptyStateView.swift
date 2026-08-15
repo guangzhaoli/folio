@@ -29,10 +29,12 @@ final class EmptyStateView: NSView {
         )
         openFile.bezelStyle = .rounded
 
-        // Workspace opening is not implemented; keep the control visible.
-        let openFolder = NSButton(title: "Open Folder…", target: nil, action: nil)
+        let openFolder = NSButton(
+            title: "Open Folder…",
+            target: FolioDocumentController.folio,
+            action: #selector(FolioDocumentController.openWorkspace(_:))
+        )
         openFolder.bezelStyle = .rounded
-        openFolder.isEnabled = false
 
         let buttons = NSStackView(views: [openFile, openFolder])
         buttons.orientation = .horizontal

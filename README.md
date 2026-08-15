@@ -17,6 +17,8 @@ Open `Folio.xcodeproj` in Xcode and run the **Folio** scheme.
 
 Double-click a `.md` file to open it in Folio. Folio registers as the default handler for Markdown (`.md`, `.markdown`, `.mdown`, `.mkd`, `.mdwn`). To restore another app, select a file in Finder, choose **File → Get Info**, and change **Open with**.
 
+**File → Open Folder…** (⌥⌘O) or drop a folder on the Dock icon to show a library sidebar. Click a `.md` file to replace the document in the same window. Hidden files, `.git`, `node_modules`, and other vendor directories are skipped.
+
 Saves are always UTF-8 without a BOM. Files larger than 50 MB are refused.
 
 ## License
@@ -25,4 +27,4 @@ MIT. See [LICENSE](LICENSE).
 
 ## Status
 
-v1 is under construction via stacked pull requests. This tree opens and saves a single Markdown file in an unhighlighted text view.
+v1 is under construction via stacked pull requests. This tree reads and edits a Markdown file, renders GFM in a native reading pane, and can open a folder as a library sidebar.

@@ -99,6 +99,109 @@ final class FolioDocumentController: NSDocumentController {
         }
     }
 
+    @objc func openWorkspace(_ sender: Any?) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.message = "Choose a folder of Markdown files"
+        let host = (NSApp.keyWindow?.windowController as? MainWindowController)
+        let finish: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            self?.openWorkspace(at: url, in: host)
+        }
+        if let window = host?.window {
+            panel.beginSheetModal(for: window, completionHandler: finish)
+        } else {
+            panel.begin(completionHandler: finish)
+        }
+    }
+
+    func openWorkspace(at url: URL, in window: MainWindowController?, forceCurrentWindow: Bool = false) {
+        let host: MainWindowController
+        if forceCurrentWindow, let window {
+            host = window
+        } else if let window, window.workspace == nil {
+            host = window
+        } else if let reusable = MainWindowController.all.first(where: { $0.workspace == nil }) {
+            host = reusable
+        } else {
+            host = MainWindowController()
+        }
+        host.bindWorkspace(Workspace(root: url))
+        host.showWindow(nil)
+    }
+
+    @objc func openEnclosingFolder(_ sender: Any?) {
+        guard let window = NSApp.keyWindow?.windowController as? MainWindowController,
+              let file = window.markdownDocument?.fileURL
+        else { return }
+        openWorkspace(at: file.deletingLastPathComponent(), in: window, forceCurrentWindow: true)
+    }
+
+    func openInNewWindow(_ url: URL, workspaceRoot: URL?) {
+        let target = url.standardizedFileURL
+        if let existing = document(for: target) as? MarkdownDocument {
+            existing.windowControllers.first?.showWindow(nil)
+            return
+        }
+        let window = MainWindowController()
+        if let workspaceRoot {
+            window.bindWorkspace(Workspace(root: workspaceRoot))
+        }
+        openMarkdown(at: target, in: window)
+    }
+
+    func replaceDocument(in window: MainWindowController, with url: URL) {
+        let target = url.standardizedFileURL
+        if window.markdownDocument?.fileURL?.standardizedFileURL == target {
+            return
+        }
+        if let existing = document(for: target) as? MarkdownDocument {
+            existing.windowControllers.first?.showWindow(nil)
+            return
+        }
+        if window.sourceTextView?.hasMarkedText() == true {
+            return
+        }
+
+        let proceed = { [weak self] in
+            guard let self else { return }
+            self.detachDocument(from: window, resetChrome: false)
+            self.preferredAttachWindow = window
+            self.openMarkdown(at: target, in: window)
+        }
+
+        guard let current = window.markdownDocument, current.isDocumentEdited else {
+            proceed()
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = "Save changes to “\(current.displayName)”?"
+        alert.informativeText = "Your edits will be lost if you don’t save them."
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Don’t Save")
+        alert.addButton(withTitle: "Cancel")
+        guard let sheetWindow = window.window else { return }
+        alert.beginSheetModal(for: sheetWindow) { response in
+            switch response {
+            case .alertFirstButtonReturn:
+                guard let fileURL = current.fileURL else { return }
+                current.save(
+                    to: fileURL,
+                    ofType: current.fileType ?? FolioDocumentController.markdownType,
+                    for: .saveOperation
+                ) { error in
+                    if error == nil { proceed() }
+                }
+            case .alertSecondButtonReturn:
+                proceed()
+            default:
+                break
+            }
+        }
+    }
+
     func attach(_ document: MarkdownDocument, to window: MainWindowController) {
         if window.document === document { return }
         document.addWindowController(window)
@@ -106,11 +209,18 @@ final class FolioDocumentController: NSDocumentController {
     }
 
     @discardableResult
-    func detachDocument(from window: MainWindowController) -> MarkdownDocument? {
+    func detachDocument(from window: MainWindowController, resetChrome: Bool = true) -> MarkdownDocument? {
         guard let document = window.markdownDocument else { return nil }
+        window.prepareForDocumentSwap()
         document.removeWindowController(window)
         document.close()
-        window.showEmptyState()
+        if resetChrome {
+            if window.workspace == nil {
+                window.showEmptyState()
+            } else {
+                window.showLibraryPlaceholder()
+            }
+        }
         return document
     }
 
@@ -137,10 +247,14 @@ final class FolioDocumentController: NSDocumentController {
     }
 
     override func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
-        if item.action == #selector(newDocument(_:)) || item.action == #selector(openDocument(_:)) {
+        switch item.action {
+        case #selector(newDocument(_:)), #selector(openDocument(_:)), #selector(openWorkspace(_:)):
             return true
+        case #selector(openEnclosingFolder(_:)):
+            return (NSApp.keyWindow?.windowController as? MainWindowController)?.markdownDocument?.fileURL != nil
+        default:
+            return super.validateUserInterfaceItem(item)
         }
-        return super.validateUserInterfaceItem(item)
     }
 
     private static var openPanelContentTypes: [UTType] {

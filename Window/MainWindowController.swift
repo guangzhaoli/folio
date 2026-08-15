@@ -12,6 +12,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private var editorSplit: NSSplitView?
     private var rootSplit: NSSplitViewController?
     private let outlineController = OutlineViewController()
+    private let fileSidebar = SidebarViewController()
+    private(set) var workspace: Workspace?
+    private var editorHost: NSViewController?
+    private var placeholderView: NSView?
     private var viewMode: ViewMode = .stored
     private var snapshot = ParseSnapshot.empty
     private var readingRanges: [BlockID: NSRange] = [:]
@@ -49,10 +53,12 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     var markdownDocument: MarkdownDocument? { document as? MarkdownDocument }
 
     func showEmptyState() {
-        unbindSourceView()
-        markdownDocument?.onSnapshot = nil
+        prepareForDocumentSwap()
+        workspace = nil
         rootSplit = nil
         editorSplit = nil
+        editorHost = nil
+        placeholderView = nil
         sourceTextView = nil
         editorScrollView = nil
         readingTextView = nil
@@ -66,16 +72,52 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         window?.subtitle = ""
     }
 
+    func bindWorkspace(_ workspace: Workspace) {
+        self.workspace = workspace
+        if rootSplit == nil {
+            installChrome()
+        }
+        fileSidebar.workspace = workspace
+        fileSidebar.selectedURL = markdownDocument?.fileURL
+        fileSidebar.view.isHidden = false
+        if markdownDocument == nil {
+            showLibraryPlaceholder()
+        } else {
+            setEditorVisible(true)
+            window?.title = markdownDocument?.displayName ?? workspace.rootURL.lastPathComponent
+        }
+    }
+
+    func showLibraryPlaceholder() {
+        prepareForDocumentSwap()
+        setEditorVisible(false)
+        fileSidebar.selectedURL = nil
+        let empty = workspace?.containsMarkdown() != true
+        (placeholderView as? NSTextField)?.stringValue = empty
+            ? "No Markdown files in this folder"
+            : "Select a Markdown file in the sidebar"
+        window?.representedURL = nil
+        window?.title = workspace?.rootURL.lastPathComponent ?? "Folio"
+        window?.subtitle = "Library"
+    }
+
+    func prepareForDocumentSwap() {
+        markdownDocument?.onSnapshot = nil
+        unbindSourceView()
+    }
+
     func showEditor(for document: MarkdownDocument) {
         if rootSplit == nil {
             installChrome()
         }
+        setEditorVisible(true)
         bindSourceView(to: document)
         document.onSnapshot = { [weak self] snapshot in
             self?.apply(snapshot: snapshot)
         }
         document.scheduleParse()
         applyViewMode()
+        fileSidebar.selectedURL = document.fileURL
         window?.representedURL = document.fileURL
         window?.title = document.displayName
         window?.makeFirstResponder(sourceTextView)
@@ -99,7 +141,11 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             menuItem.state = viewMode == .reading ? .on : .off
             return markdownDocument != nil
         case #selector(toggleOutline(_:)):
-            return markdownDocument != nil
+            return rootSplit != nil
+        case #selector(nextFile(_:)), #selector(previousFile(_:)):
+            return workspace != nil && markdownDocument?.fileURL != nil
+        case #selector(closeFile(_:)):
+            return workspace != nil && markdownDocument != nil
         default:
             return true
         }
@@ -112,6 +158,24 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     @objc func toggleOutline(_ sender: Any?) {
         guard let item = rootSplit?.splitViewItems.first else { return }
         item.animator().isCollapsed.toggle()
+    }
+
+    @objc func nextFile(_ sender: Any?) {
+        guard let current = markdownDocument?.fileURL,
+              let next = workspace?.nextMarkdown(after: current)
+        else { return }
+        FolioDocumentController.folio.replaceDocument(in: self, with: next)
+    }
+
+    @objc func previousFile(_ sender: Any?) {
+        guard let current = markdownDocument?.fileURL,
+              let previous = workspace?.previousMarkdown(before: current)
+        else { return }
+        FolioDocumentController.folio.replaceDocument(in: self, with: previous)
+    }
+
+    @objc func closeFile(_ sender: Any?) {
+        FolioDocumentController.folio.detachDocument(from: self, resetChrome: true)
     }
 
     @objc private func viewModeToolbarChanged(_ sender: NSSegmentedControl) {
@@ -180,20 +244,62 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     }
 
     private func installChrome() {
-        let outlineItem = NSSplitViewItem(sidebarWithViewController: outlineController)
-        outlineItem.minimumThickness = 168
-        outlineItem.maximumThickness = 280
-        outlineItem.canCollapse = true
+        fileSidebar.onOpenFile = { [weak self] url in
+            guard let self else { return }
+            FolioDocumentController.folio.replaceDocument(in: self, with: url)
+        }
+        fileSidebar.onOpenInNewWindow = { [weak self] url in
+            FolioDocumentController.folio.openInNewWindow(url, workspaceRoot: self?.workspace?.rootURL)
+        }
         outlineController.onSelect = { [weak self] item in
             self?.jump(to: item)
         }
 
-        let editorHost = NSViewController()
+        let library = NSSplitView()
+        library.isVertical = false
+        library.dividerStyle = .thin
+        library.addArrangedSubview(fileSidebar.view)
+        library.addArrangedSubview(outlineController.view)
+        library.setHoldingPriority(NSLayoutConstraint.Priority(260), forSubviewAt: 0)
+        library.setHoldingPriority(NSLayoutConstraint.Priority(200), forSubviewAt: 1)
+        let libraryHost = NSViewController()
+        libraryHost.view = library
+
+        let outlineItem = NSSplitViewItem(sidebarWithViewController: libraryHost)
+        outlineItem.minimumThickness = 180
+        outlineItem.maximumThickness = 320
+        outlineItem.canCollapse = true
+
+        let host = NSViewController()
+        let container = NSView()
+        host.view = container
+        editorHost = host
+
+        let placeholder = NSTextField(labelWithString: "Select a Markdown file in the sidebar")
+        placeholder.font = .systemFont(ofSize: 15)
+        placeholder.textColor = .secondaryLabelColor
+        placeholder.alignment = .center
+        placeholder.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(placeholder)
+        placeholderView = placeholder
+        NSLayoutConstraint.activate([
+            placeholder.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            placeholder.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+        ])
+
         let split = NSSplitView()
         split.isVertical = true
         split.dividerStyle = .thin
         split.delegate = self
+        split.translatesAutoresizingMaskIntoConstraints = false
         editorSplit = split
+        container.addSubview(split)
+        NSLayoutConstraint.activate([
+            split.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            split.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            split.topAnchor.constraint(equalTo: container.topAnchor),
+            split.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
 
         let sourceScroll = makeSourceScroll()
         let readingScroll = makeReadingScroll()
@@ -204,8 +310,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         split.setHoldingPriority(.defaultLow, forSubviewAt: 0)
         split.setHoldingPriority(.defaultLow, forSubviewAt: 1)
 
-        editorHost.view = split
-        let editorItem = NSSplitViewItem(viewController: editorHost)
+        let editorItem = NSSplitViewItem(viewController: host)
         editorItem.minimumThickness = 360
 
         let splitController = NSSplitViewController()
@@ -214,6 +319,13 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         window?.contentView = nil
         window?.contentViewController = splitController
         applyViewMode()
+        setEditorVisible(markdownDocument != nil)
+    }
+
+    private func setEditorVisible(_ visible: Bool) {
+        editorSplit?.isHidden = !visible
+        placeholderView?.isHidden = visible
+        fileSidebar.view.isHidden = workspace == nil
     }
 
     private func wrapColumn(_ scroll: NSScrollView) -> NSView {
@@ -301,7 +413,11 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             let mid = split.bounds.width / 2
             split.setPosition(mid, ofDividerAt: 0)
         }
-        window?.subtitle = viewMode == .reading ? "Reading" : (viewMode == .source ? "Source" : "Split")
+        if markdownDocument == nil, workspace != nil {
+            window?.subtitle = "Library"
+        } else {
+            window?.subtitle = viewMode == .reading ? "Reading" : (viewMode == .source ? "Source" : "Split")
+        }
     }
 
     private func apply(snapshot: ParseSnapshot) {

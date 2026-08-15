@@ -49,6 +49,10 @@
 		C20000000000000000000029 /* tagfilter.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000029 /* tagfilter.c */; };
 		C20000000000000000000030 /* tasklist.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000030 /* tasklist.c */; };
 		A10000000000000000000022 /* ParseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000021 /* ParseTests.swift */; };
+		A10000000000000000000071 /* FileNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000070 /* FileNode.swift */; };
+		A10000000000000000000073 /* Workspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000072 /* Workspace.swift */; };
+		A10000000000000000000075 /* SidebarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000074 /* SidebarViewController.swift */; };
+		A10000000000000000000077 /* WorkspaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000076 /* WorkspaceTests.swift */; };
 		A1B2C3D4E5F6000000000021 /* FolioAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000020 /* FolioAppDelegate.swift */; };
 		A1B2C3D4E5F6000000000023 /* FolioDocumentController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000022 /* FolioDocumentController.swift */; };
 		A1B2C3D4E5F6000000000025 /* UpdateChecking.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000024 /* UpdateChecking.swift */; };
@@ -114,6 +118,10 @@
 		C10000000000000000000029 /* tagfilter.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tagfilter.c; sourceTree = "<group>"; };
 		C10000000000000000000030 /* tasklist.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tasklist.c; sourceTree = "<group>"; };
 		A10000000000000000000021 /* ParseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParseTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000070 /* FileNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileNode.swift; sourceTree = "<group>"; };
+		A10000000000000000000072 /* Workspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workspace.swift; sourceTree = "<group>"; };
+		A10000000000000000000074 /* SidebarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarViewController.swift; sourceTree = "<group>"; };
+		A10000000000000000000076 /* WorkspaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6000000000007 /* Folio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Folio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F6000000000020 /* FolioAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolioAppDelegate.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6000000000022 /* FolioDocumentController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolioDocumentController.swift; sourceTree = "<group>"; };
@@ -192,6 +200,7 @@
 				A1B2C3D4E5F600000000002E /* EmptyStateView.swift */,
 				A1000000000000000000000F /* OutlineViewController.swift */,
 				A10000000000000000000011 /* WindowChromeState.swift */,
+				A10000000000000000000074 /* SidebarViewController.swift */,
 			);
 			path = Window;
 			sourceTree = "<group>";
@@ -201,6 +210,8 @@
 			children = (
 				A1B2C3D4E5F6000000000032 /* MarkdownDocument.swift */,
 				A1B2C3D4E5F6000000000030 /* EncodingDetector.swift */,
+				A10000000000000000000070 /* FileNode.swift */,
+				A10000000000000000000072 /* Workspace.swift */,
 			);
 			path = Document;
 			sourceTree = "<group>";
@@ -210,6 +221,7 @@
 			children = (
 				A1B2C3D4E5F6000000000038 /* EncodingTests */,
 				A10000000000000000000060 /* ParseTests */,
+				A10000000000000000000080 /* WorkspaceTests */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -312,6 +324,14 @@
 				A10000000000000000000021 /* ParseTests.swift */,
 			);
 			path = ParseTests;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000080 /* WorkspaceTests */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000076 /* WorkspaceTests.swift */,
+			);
+			path = WorkspaceTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -462,6 +482,9 @@
 				A1B2C3D4E5F600000000002F /* EmptyStateView.swift in Sources */,
 				A1B2C3D4E5F6000000000031 /* EncodingDetector.swift in Sources */,
 				A1B2C3D4E5F6000000000033 /* MarkdownDocument.swift in Sources */,
+				A10000000000000000000071 /* FileNode.swift in Sources */,
+				A10000000000000000000073 /* Workspace.swift in Sources */,
+				A10000000000000000000075 /* SidebarViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -471,6 +494,7 @@
 			files = (
 				A1B2C3D4E5F6000000000036 /* EncodingTests.swift in Sources */,
 				A10000000000000000000022 /* ParseTests.swift in Sources */,
+				A10000000000000000000077 /* WorkspaceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
