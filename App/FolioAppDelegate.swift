@@ -14,6 +14,8 @@ final class FolioAppDelegate: NSObject, NSApplicationDelegate {
         UserDefaults.standard.register(defaults: [
             "defaultViewMode": "split",
             "folio.viewMode": ViewMode.split.rawValue,
+            "folio.outlinePlacement": OutlinePlacement.belowLibrary.rawValue,
+            "folio.outlineVisible": true,
             "readingFontSize": 17.0,
             "showSidebarWhenOpeningFolder": true,
             "appearance": "followSystem",

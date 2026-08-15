@@ -379,6 +379,27 @@
                                     <action selector="toggleOutline:" target="-1" id="vmd-out-act"/>
                                 </connections>
                             </menuItem>
+                            <menuItem title="Outline Position" id="vmd-pos-001">
+                                <menu key="submenu" title="Outline Position" id="vmd-pos-sub">
+                                    <items>
+                                        <menuItem title="Below Library" id="vmd-pos-bel">
+                                            <connections>
+                                                <action selector="placeOutlineBelow:" target="-1" id="vmd-pos-bel-act"/>
+                                            </connections>
+                                        </menuItem>
+                                        <menuItem title="Top" id="vmd-pos-top">
+                                            <connections>
+                                                <action selector="placeOutlineTop:" target="-1" id="vmd-pos-top-act"/>
+                                            </connections>
+                                        </menuItem>
+                                        <menuItem title="Right" id="vmd-pos-trg">
+                                            <connections>
+                                                <action selector="placeOutlineTrailing:" target="-1" id="vmd-pos-trg-act"/>
+                                            </connections>
+                                        </menuItem>
+                                    </items>
+                                </menu>
+                            </menuItem>
                             <menuItem title="Next File" keyEquivalent="↓" id="vmd-nxt-001">
                                 <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
                                 <connections>
