@@ -35,4 +35,9 @@ final class FolioAppDelegate: NSObject, NSApplicationDelegate {
             FolioDocumentController.folio.openMarkdown(at: url)
         }
     }
+
+    func application(_ sender: NSApplication, openFile filename: String) -> Bool {
+        FolioDocumentController.folio.openMarkdown(at: URL(fileURLWithPath: filename))
+        return true
+    }
 }

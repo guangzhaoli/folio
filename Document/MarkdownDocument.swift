@@ -12,6 +12,7 @@ final class MarkdownDocument: NSDocument, NSTextStorageDelegate {
     let textStorage = NSTextStorage()
     private(set) var encoding: String.Encoding = .utf8
     private var didWarnUTF8Conversion = false
+    weak var attachedSourceView: NSTextView?
 
     override init() {
         super.init()
@@ -87,33 +88,10 @@ final class MarkdownDocument: NSDocument, NSTextStorageDelegate {
         super.save(to: url, ofType: typeName, for: saveOperation, completionHandler: completionHandler)
     }
 
-    override func makeWindowControllers() {
-        let scrollView = NSTextView.scrollableTextView()
-        guard let textView = scrollView.documentView as? NSTextView else { return }
-        textView.isRichText = false
-        textView.allowsUndo = true
-        textView.usesFindBar = true
-        textView.isAutomaticQuoteSubstitutionEnabled = false
-        textView.isAutomaticDashSubstitutionEnabled = false
-        textView.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+    // Window-owned documents: FolioDocumentController.attach creates the chrome.
+    override func makeWindowControllers() {}
 
-        if let contentStorage = textView.textLayoutManager?.textContentManager as? NSTextContentStorage {
-            contentStorage.textStorage = textStorage
-        }
-
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.minSize = NSSize(width: 480, height: 320)
-        window.contentView = scrollView
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-
-        addWindowController(NSWindowController(window: window))
-    }
+    override func encodeRestorableState(with coder: NSCoder) {}
 
     func textStorage(
         _ textStorage: NSTextStorage,
