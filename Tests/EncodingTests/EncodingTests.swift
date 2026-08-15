@@ -205,10 +205,14 @@ final class EncodingTests: XCTestCase {
             FolioDocumentController.folio.replaceDocument(in: window, with: second)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 XCTAssertEqual(window.markdownDocument?.textStorage.string, "# two\n")
-                XCTAssertTrue(window.window === originalWindow)
-                XCTAssertEqual(MainWindowController.all.count, before)
-                XCTAssertNotNil(window.workspace)
-                opened.fulfill()
+                FolioDocumentController.folio.replaceDocument(in: window, with: first)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    XCTAssertEqual(window.markdownDocument?.textStorage.string, "# one\n")
+                    XCTAssertTrue(window.window === originalWindow)
+                    XCTAssertEqual(MainWindowController.all.count, before)
+                    XCTAssertNotNil(window.workspace)
+                    opened.fulfill()
+                }
             }
         }
         wait(for: [opened], timeout: 5)

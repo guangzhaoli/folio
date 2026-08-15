@@ -150,6 +150,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         document.onSnapshot = { [weak self] snapshot in
             self?.apply(snapshot: snapshot)
         }
+        if document.snapshot.generation > 0 {
+            apply(snapshot: document.snapshot)
+        }
         document.scheduleParse()
         applyViewMode()
         fileSidebar.selectedURL = document.fileURL
@@ -158,8 +161,12 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         refreshEditorLayout()
         window?.makeFirstResponder(sourceTextView)
         DispatchQueue.main.async { [weak self] in
-            self?.refreshEditorLayout()
-            self?.refreshSourceDisplay()
+            guard let self else { return }
+            self.refreshEditorLayout()
+            self.refreshSourceDisplay()
+            if let snapshot = self.markdownDocument?.snapshot {
+                self.apply(snapshot: snapshot)
+            }
         }
     }
 
@@ -691,8 +698,14 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             style: style
         )
         readingRanges = rendered.blockCharRanges
-        if let storage = readingTextView?.textStorage {
+        if let reading = readingTextView, let storage = reading.textStorage {
             storage.setAttributedString(rendered.text)
+            reading.needsLayout = true
+            reading.needsDisplay = true
+            if let layout = reading.textLayoutManager {
+                layout.ensureLayout(for: layout.documentRange)
+                layout.textViewportLayoutController.layoutViewport()
+            }
         }
         if let source = sourceTextView, source.hasMarkedText() == false {
             SourceHighlighter.apply(snapshot: snapshot, to: source)
@@ -823,10 +836,14 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     }
 
     private func bindSourceView(to document: MarkdownDocument) {
-        guard let textView = sourceTextView,
-              let content = textView.textLayoutManager?.textContentManager as? NSTextContentStorage
-        else { return }
-        content.textStorage = document.textStorage
+        guard let textView = sourceTextView else { return }
+        if let content = textView.textLayoutManager?.textContentManager as? NSTextContentStorage {
+            content.textStorage = document.textStorage
+        } else if let layout = textView.layoutManager {
+            layout.replaceTextStorage(document.textStorage)
+        } else {
+            textView.string = document.textStorage.string
+        }
         document.attachedSourceView = textView
         refreshSourceDisplay()
     }

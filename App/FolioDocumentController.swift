@@ -74,7 +74,7 @@ final class FolioDocumentController: NSDocumentController {
             return
         }
         if let existing = document(for: url) as? MarkdownDocument {
-            existing.windowControllers.first?.showWindow(nil)
+            presentExisting(existing, display: displayDocument)
             completionHandler(existing, true, nil)
             return
         }
@@ -171,13 +171,17 @@ final class FolioDocumentController: NSDocumentController {
     func replaceDocument(in window: MainWindowController, with url: URL) {
         let target = url.standardizedFileURL
         if window.markdownDocument?.fileURL?.standardizedFileURL == target {
+            window.showEditor(for: window.markdownDocument!)
             return
         }
         if let existing = document(for: target) as? MarkdownDocument {
-            existing.windowControllers.first?.showWindow(nil)
-            return
-        }
-        if window.sourceTextView?.hasMarkedText() == true {
+            if let other = existing.windowControllers.first as? MainWindowController, other !== window {
+                other.showWindow(nil)
+                return
+            }
+            detachDocument(from: window, resetChrome: false)
+            attach(existing, to: window)
+            window.showWindow(nil)
             return
         }
 
@@ -219,9 +223,30 @@ final class FolioDocumentController: NSDocumentController {
     }
 
     func attach(_ document: MarkdownDocument, to window: MainWindowController) {
-        if window.document === document { return }
+        if window.document === document {
+            window.showEditor(for: document)
+            return
+        }
+        if window.document != nil {
+            detachDocument(from: window, resetChrome: false)
+        }
         document.addWindowController(window)
         window.showEditor(for: document)
+    }
+
+    private func presentExisting(_ document: MarkdownDocument, display: Bool) {
+        if let existingWindow = document.windowControllers.first as? MainWindowController {
+            existingWindow.showWindow(nil)
+            existingWindow.showEditor(for: document)
+            return
+        }
+        guard display else { return }
+        let window = takePreferredEmptyWindow()
+            ?? currentEmptyWindow()
+            ?? currentWindow()
+            ?? MainWindowController()
+        attach(document, to: window)
+        window.showWindow(nil)
     }
 
     @discardableResult
@@ -229,7 +254,9 @@ final class FolioDocumentController: NSDocumentController {
         guard let document = window.markdownDocument else { return nil }
         window.prepareForDocumentSwap()
         document.removeWindowController(window)
-        document.close()
+        if document.windowControllers.isEmpty {
+            removeDocument(document)
+        }
         if resetChrome {
             if window.workspace == nil {
                 window.showEmptyState()
