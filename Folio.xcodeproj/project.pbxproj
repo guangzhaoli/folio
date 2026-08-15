@@ -13,6 +13,7 @@
 		A10000000000000000000008 /* ReaderStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* ReaderStyle.swift */; };
 		A1000000000000000000000A /* ReadingRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* ReadingRenderer.swift */; };
 		A1000000000000000000000C /* ReadingTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000B /* ReadingTextView.swift */; };
+		A10000000000000000000014 /* BlockChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* BlockChrome.swift */; };
 		A1000000000000000000000E /* SourceHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000D /* SourceHighlighter.swift */; };
 		A10000000000000000000010 /* OutlineViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000F /* OutlineViewController.swift */; };
 		A10000000000000000000012 /* WindowChromeState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* WindowChromeState.swift */; };
@@ -77,6 +78,7 @@
 		A10000000000000000000007 /* ReaderStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderStyle.swift; sourceTree = "<group>"; };
 		A10000000000000000000009 /* ReadingRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingRenderer.swift; sourceTree = "<group>"; };
 		A1000000000000000000000B /* ReadingTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingTextView.swift; sourceTree = "<group>"; };
+		A10000000000000000000013 /* BlockChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockChrome.swift; sourceTree = "<group>"; };
 		A1000000000000000000000D /* SourceHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceHighlighter.swift; sourceTree = "<group>"; };
 		A1000000000000000000000F /* OutlineViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlineViewController.swift; sourceTree = "<group>"; };
 		A10000000000000000000011 /* WindowChromeState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChromeState.swift; sourceTree = "<group>"; };
@@ -291,6 +293,7 @@
 				A10000000000000000000007 /* ReaderStyle.swift */,
 				A10000000000000000000009 /* ReadingRenderer.swift */,
 				A1000000000000000000000B /* ReadingTextView.swift */,
+				A10000000000000000000013 /* BlockChrome.swift */,
 			);
 			path = Reader;
 			sourceTree = "<group>";
@@ -417,6 +420,7 @@
 				A10000000000000000000008 /* ReaderStyle.swift in Sources */,
 				A1000000000000000000000A /* ReadingRenderer.swift in Sources */,
 				A1000000000000000000000C /* ReadingTextView.swift in Sources */,
+				A10000000000000000000014 /* BlockChrome.swift in Sources */,
 				A1000000000000000000000E /* SourceHighlighter.swift in Sources */,
 				A10000000000000000000010 /* OutlineViewController.swift in Sources */,
 				A10000000000000000000012 /* WindowChromeState.swift in Sources */,

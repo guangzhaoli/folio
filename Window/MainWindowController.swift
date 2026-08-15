@@ -275,6 +275,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         scroll.documentView = textView
         readingTextView = textView
         readingScrollView = scroll
+        textView.onAppearanceChange = { [weak self] in
+            guard let self else { return }
+            self.apply(snapshot: self.snapshot)
+        }
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(readingScrolled),

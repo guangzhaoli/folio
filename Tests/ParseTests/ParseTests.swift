@@ -54,4 +54,21 @@ final class ParseTests: XCTestCase {
         XCTAssertTrue(doc.text.string.contains("Body"))
         XCTAssertFalse(doc.blockCharRanges.isEmpty)
     }
+
+    func testTableAndQuoteUseBlockChrome() {
+        let md = """
+        > A quoted line.
+
+        | Name | Value |
+        | --- | --- |
+        | α | 1 |
+        """
+        let snap = MarkdownParser.parse(text: md, generation: 1)
+        let doc = ReadingRenderer.render(snapshot: snap, baseDirectory: nil, style: .default)
+        var count = 0
+        doc.text.enumerateAttribute(.attachment, in: NSRange(location: 0, length: doc.text.length)) { value, _, _ in
+            if value is NSTextAttachment { count += 1 }
+        }
+        XCTAssertGreaterThanOrEqual(count, 2, "quote and table should be native block attachments")
+    }
 }

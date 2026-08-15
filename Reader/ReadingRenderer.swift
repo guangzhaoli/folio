@@ -13,6 +13,9 @@ enum ReadingRenderer {
         for node in snapshot.nodes {
             appendBlock(node, to: output, ranges: &ranges, style: style, baseDirectory: baseDirectory, listDepth: &listDepth, orderedIndex: 1)
         }
+        if output.length > 0 {
+            output.append(NSAttributedString(string: "\n"))
+        }
         return ReadingDocument(text: output, blockCharRanges: ranges)
     }
 
@@ -29,74 +32,109 @@ enum ReadingRenderer {
         switch node.kind {
         case .heading(let level):
             appendInlines(node.inlines, to: output, attributes: headingAttrs(level: level, style: style), baseDirectory: baseDirectory)
-            output.append(NSAttributedString(string: "\n"))
+            output.append(spacer(12))
         case .paragraph:
             appendInlines(node.inlines, to: output, attributes: bodyAttrs(style: style, indent: CGFloat(listDepth) * 22), baseDirectory: baseDirectory)
-            output.append(NSAttributedString(string: "\n"))
-        case .list:
+            output.append(spacer(listDepth > 0 ? 4 : 10))
+        case .list(let ordered):
             var index = 1
             for child in node.children {
-                appendBlock(child, to: output, ranges: &ranges, style: style, baseDirectory: baseDirectory, listDepth: &listDepth, orderedIndex: index)
+                appendBlock(
+                    child,
+                    to: output,
+                    ranges: &ranges,
+                    style: style,
+                    baseDirectory: baseDirectory,
+                    listDepth: &listDepth,
+                    orderedIndex: ordered ? index : 0
+                )
                 index += 1
+            }
+            if listDepth == 0 {
+                output.append(spacer(6))
             }
         case .item(let checked):
             listDepth += 1
             let marker: String
             if let checked {
-                marker = checked ? "☑  " : "☐  "
-            } else if case .list(let ordered) = node.children.first?.kind {
-                _ = ordered
-                marker = ""
+                marker = checked ? "☑   " : "☐   "
+            } else if orderedIndex > 0 {
+                marker = "\(orderedIndex).  "
             } else {
-                marker = "•  "
+                marker = "•   "
             }
-            if !marker.isEmpty {
-                output.append(NSAttributedString(string: String(repeating: "\t", count: max(0, listDepth - 1)) + marker, attributes: bodyAttrs(style: style, indent: 0)))
-            }
+            let indent = CGFloat(listDepth - 1) * 22
+            var markerAttrs = bodyAttrs(style: style, indent: indent)
+            markerAttrs[.foregroundColor] = NSColor.secondaryLabelColor
+            output.append(NSAttributedString(string: marker, attributes: markerAttrs))
             if !node.inlines.isEmpty {
-                appendInlines(node.inlines, to: output, attributes: bodyAttrs(style: style, indent: 0), baseDirectory: baseDirectory)
+                appendInlines(node.inlines, to: output, attributes: bodyAttrs(style: style, indent: indent + 22), baseDirectory: baseDirectory)
                 output.append(NSAttributedString(string: "\n"))
             }
             var childIndex = 1
             for child in node.children {
-                appendBlock(child, to: output, ranges: &ranges, style: style, baseDirectory: baseDirectory, listDepth: &listDepth, orderedIndex: childIndex)
+                let nextOrdered: Int
+                if case .list(let ordered) = child.kind {
+                    nextOrdered = ordered ? childIndex : 0
+                } else {
+                    nextOrdered = childIndex
+                }
+                appendBlock(child, to: output, ranges: &ranges, style: style, baseDirectory: baseDirectory, listDepth: &listDepth, orderedIndex: nextOrdered)
                 childIndex += 1
             }
             listDepth -= 1
         case .codeBlock:
             let code = MarkdownParser.plainText(node.inlines)
-            var attrs = monoAttrs(style: style)
-            attrs[.backgroundColor] = NSColor.textBackgroundColor.shadow(withLevel: 0.06) ?? NSColor.quaternaryLabelColor
-            output.append(NSAttributedString(string: (code.hasSuffix("\n") ? code : code + "\n"), attributes: attrs))
-            output.append(NSAttributedString(string: "\n"))
+            appendAttachment(BlockChrome.codeImage(code: code, style: style, maxWidth: style.measure), to: output)
         case .blockQuote:
+            let inner = NSMutableAttributedString()
+            var innerDepth = 0
             for child in node.children {
-                appendBlock(child, to: output, ranges: &ranges, style: style, baseDirectory: baseDirectory, listDepth: &listDepth, orderedIndex: 1)
+                appendBlock(child, to: inner, ranges: &ranges, style: style, baseDirectory: baseDirectory, listDepth: &innerDepth, orderedIndex: 1)
             }
+            if inner.length > 0 {
+                trimTrailingNewlines(inner)
+                var quoteAttrs = [NSAttributedString.Key: Any]()
+                quoteAttrs[.foregroundColor] = NSColor.secondaryLabelColor
+                inner.addAttributes(quoteAttrs, range: NSRange(location: 0, length: inner.length))
+            }
+            appendAttachment(BlockChrome.quoteImage(content: inner, maxWidth: style.measure), to: output)
         case .thematicBreak:
-            output.append(NSAttributedString(string: "\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n\n", attributes: [
-                .font: NSFont.systemFont(ofSize: 9),
-                .foregroundColor: NSColor.separatorColor,
+            let line = String(repeating: "\u{00A0}", count: 8)
+            let ps = NSMutableParagraphStyle()
+            ps.alignment = .center
+            ps.paragraphSpacing = 16
+            ps.paragraphSpacingBefore = 8
+            output.append(NSAttributedString(string: "—  —  —\n", attributes: [
+                .font: NSFont.systemFont(ofSize: 11, weight: .medium),
+                .foregroundColor: NSColor.tertiaryLabelColor,
+                .paragraphStyle: ps,
             ]))
+            _ = line
         case .table:
+            var rows: [[NSAttributedString]] = []
+            var headerRows = 0
             for child in node.children {
-                appendBlock(child, to: output, ranges: &ranges, style: style, baseDirectory: baseDirectory, listDepth: &listDepth, orderedIndex: 1)
-            }
-            output.append(NSAttributedString(string: "\n"))
-        case .tableRow:
-            var cells: [String] = []
-            for child in node.children {
-                if case .tableCell = child.kind {
-                    cells.append(MarkdownParser.plainText(child.inlines))
+                guard case .tableRow(let isHeader) = child.kind else { continue }
+                var cells: [NSAttributedString] = []
+                for cell in child.children {
+                    guard case .tableCell = cell.kind else { continue }
+                    let piece = NSMutableAttributedString()
+                    let attrs = isHeader ? headerCellAttrs(style: style) : bodyAttrs(style: style, indent: 0)
+                    appendInlines(cell.inlines, to: piece, attributes: attrs, baseDirectory: baseDirectory)
+                    cells.append(piece)
                 }
+                if isHeader { headerRows += 1 }
+                rows.append(cells)
             }
-            let line = cells.joined(separator: "   ") + "\n"
-            output.append(NSAttributedString(string: line, attributes: monoAttrs(style: style)))
-        case .tableCell:
+            if !rows.isEmpty {
+                appendAttachment(BlockChrome.tableImage(rows: rows, headerRows: headerRows, maxWidth: style.measure), to: output)
+            }
+        case .tableRow, .tableCell:
             break
         case .html:
             appendInlines(node.inlines, to: output, attributes: monoAttrs(style: style), baseDirectory: baseDirectory)
-            output.append(NSAttributedString(string: "\n"))
+            output.append(spacer(8))
         case .footnoteDefinition:
             for child in node.children {
                 appendBlock(child, to: output, ranges: &ranges, style: style, baseDirectory: baseDirectory, listDepth: &listDepth, orderedIndex: 1)
@@ -106,6 +144,28 @@ enum ReadingRenderer {
         let length = output.length - start
         if length > 0 {
             ranges[node.id] = NSRange(location: start, length: length)
+        }
+    }
+
+    private static func appendAttachment(_ image: NSImage, to output: NSMutableAttributedString) {
+        output.append(NSAttributedString(attachment: BlockChrome.attachment(image: image)))
+        output.append(spacer(14))
+    }
+
+    private static func spacer(_ after: CGFloat) -> NSAttributedString {
+        let ps = NSMutableParagraphStyle()
+        ps.paragraphSpacing = after
+        return NSAttributedString(string: "\n", attributes: [.font: NSFont.systemFont(ofSize: 4), .paragraphStyle: ps])
+    }
+
+    private static func trimTrailingNewlines(_ text: NSMutableAttributedString) {
+        while text.length > 0 {
+            let last = (text.string as NSString).substring(from: text.length - 1)
+            if last == "\n" || last == " " {
+                text.deleteCharacters(in: NSRange(location: text.length - 1, length: 1))
+            } else {
+                break
+            }
         }
     }
 
@@ -126,8 +186,8 @@ enum ReadingRenderer {
             case .code(let code):
                 var attrs = attributes
                 attrs[.font] = NSFont.monospacedSystemFont(ofSize: (attributes[.font] as? NSFont)?.pointSize ?? 15, weight: .regular)
-                attrs[.backgroundColor] = NSColor.quaternaryLabelColor.withAlphaComponent(0.18)
-                output.append(NSAttributedString(string: code, attributes: attrs))
+                attrs[.backgroundColor] = NSColor.quaternaryLabelColor.withAlphaComponent(0.16)
+                output.append(NSAttributedString(string: "\u{00A0}\(code)\u{00A0}", attributes: attrs))
             case .strong(let children):
                 var attrs = attributes
                 let font = (attributes[.font] as? NSFont) ?? NSFont.systemFont(ofSize: 17)
@@ -201,12 +261,23 @@ enum ReadingRenderer {
         ]
     }
 
+    private static func headerCellAttrs(style: ReaderStyle) -> [NSAttributedString.Key: Any] {
+        let font = NSFont.systemFont(ofSize: style.bodyPointSize - 1, weight: .semibold)
+        let ps = NSMutableParagraphStyle()
+        ps.lineBreakMode = .byWordWrapping
+        return [
+            .font: font,
+            .foregroundColor: NSColor.labelColor,
+            .paragraphStyle: ps,
+        ]
+    }
+
     private static func headingAttrs(level: Int, style: ReaderStyle) -> [NSAttributedString.Key: Any] {
         let font = NSFont.systemFont(ofSize: style.headingPointSize(level), weight: .semibold)
         let ps = NSMutableParagraphStyle()
         ps.lineHeightMultiple = 1.15
         ps.paragraphSpacing = 8
-        ps.paragraphSpacingBefore = level == 1 ? 8 : 16
+        ps.paragraphSpacingBefore = level == 1 ? 4 : 14
         return [
             .font: font,
             .foregroundColor: NSColor.labelColor,

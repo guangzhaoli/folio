@@ -2,6 +2,12 @@ import AppKit
 
 final class ReadingTextView: NSTextView {
     var measure: CGFloat = ReaderStyle.default.measure
+    var onAppearanceChange: (() -> Void)?
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        onAppearanceChange?()
+    }
 
     override func layout() {
         super.layout()
