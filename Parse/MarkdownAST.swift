@@ -56,6 +56,41 @@ struct OutlineItem: Sendable, Identifiable {
     var level: Int
     var title: String
     var span: SourceSpan
+
+    /// Headings from the root down to the one that contains `line`.
+    static func path(in items: [OutlineItem], throughLine line: Int) -> [OutlineItem] {
+        var crumbs: [OutlineItem] = []
+        for item in items {
+            if item.span.startLine <= line {
+                while let last = crumbs.last, last.level >= item.level {
+                    crumbs.removeLast()
+                }
+                crumbs.append(item)
+            } else {
+                break
+            }
+        }
+        return crumbs
+    }
+
+    static func siblings(of item: OutlineItem, in items: [OutlineItem]) -> [OutlineItem] {
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return [item] }
+        var start = 0
+        if item.level > 1 {
+            for i in stride(from: index - 1, through: 0, by: -1) {
+                if items[i].level < item.level {
+                    start = i + 1
+                    break
+                }
+            }
+        }
+        var result: [OutlineItem] = []
+        for i in start..<items.count {
+            if items[i].level < item.level { break }
+            if items[i].level == item.level { result.append(items[i]) }
+        }
+        return result
+    }
 }
 
 struct ParseSnapshot: Sendable {

@@ -27,6 +27,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private var outlinePlacement = OutlinePlacement.stored
     private var outlineVisible = OutlinePlacement.isVisible
     private var measureWork: DispatchWorkItem?
+    private var mouseMonitor: Any?
     private(set) var workspace: Workspace?
     private var placeholderView: NSView?
     private var viewMode: ViewMode = .stored
@@ -165,6 +166,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     func windowWillClose(_ notification: Notification) {
         markdownDocument?.onSnapshot = nil
         unbindSourceView()
+        if let monitor = mouseMonitor {
+            NSEvent.removeMonitor(monitor)
+            mouseMonitor = nil
+        }
         Self.openControllers.removeAll { $0 === self }
     }
 
@@ -421,6 +426,13 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         applyViewMode()
         setEditorVisible(markdownDocument != nil)
         applyOutlinePlacement()
+        window?.acceptsMouseMovedEvents = true
+        if mouseMonitor == nil {
+            mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved]) { [weak self] event in
+                self?.handleMouseMoved(event)
+                return event
+            }
+        }
     }
 
     private func setEditorVisible(_ visible: Bool) {
@@ -460,19 +472,20 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             guard let belowDock, let libraryHost else { return }
             belowDock.isHidden = false
             belowDockHeight?.constant = 200
-            outlineController.showsHorizontalTree = false
+            outlineController.showsBreadcrumb = false
             embed(outlineController, in: belowDock, parent: libraryHost)
             sidebarItem?.isCollapsed = false
         case .top:
             guard let topDock, let editorHost else { return }
             topDock.isHidden = false
-            topDockHeight?.constant = 168
-            outlineController.showsHorizontalTree = true
+            topDockHeight?.constant = 32
+            outlineController.showsBreadcrumb = true
             embed(outlineController, in: topDock, parent: editorHost)
+            refreshOutlineFocus()
         case .trailing:
             guard let host = trailingHost else { return }
             inspectorItem?.isCollapsed = false
-            outlineController.showsHorizontalTree = false
+            outlineController.showsBreadcrumb = false
             embed(outlineController, in: host.view, parent: host)
         }
         librarySplit?.adjustSubviews()
@@ -550,9 +563,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         return [
             .top: NSRect(
                 x: sidebarWidth + 8,
-                y: bounds.height - safe.top - 184,
+                y: bounds.height - safe.top - 48,
                 width: max(160, bounds.width - sidebarWidth - 16),
-                height: 168
+                height: 36
             ),
             .trailing: NSRect(
                 x: bounds.width - 208,
@@ -598,6 +611,12 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             selector: #selector(sourceScrolled),
             name: NSScrollView.didLiveScrollNotification,
             object: scroll
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(sourceSelectionChanged),
+            name: NSTextView.didChangeSelectionNotification,
+            object: textView
         )
         return scroll
     }
@@ -678,6 +697,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         if let source = sourceTextView, source.hasMarkedText() == false {
             SourceHighlighter.apply(snapshot: snapshot, to: source)
         }
+        refreshOutlineFocus()
     }
 
     private func jump(to item: OutlineItem) {
@@ -690,14 +710,81 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         if let reading = readingRanges[item.id] {
             readingTextView?.scrollRangeToVisible(reading)
         }
+        outlineController.focus(sourceLine: item.span.startLine)
     }
 
     @objc private func sourceScrolled() {
+        refreshOutlineFocus()
         syncScroll(fromSource: true)
     }
 
     @objc private func readingScrolled() {
+        refreshOutlineFocus()
         syncScroll(fromSource: false)
+    }
+
+    @objc private func sourceSelectionChanged() {
+        refreshOutlineFocus()
+    }
+
+    private func handleMouseMoved(_ event: NSEvent) {
+        guard event.window === window else { return }
+        refreshOutlineFocus(at: event.locationInWindow)
+    }
+
+    private func refreshOutlineFocus(at windowPoint: NSPoint? = nil) {
+        guard outlinePlacement == .top, outlineVisible else { return }
+        if let windowPoint, let line = sourceLine(atWindowPoint: windowPoint) {
+            outlineController.focus(sourceLine: line)
+            return
+        }
+        if let line = visibleSourceLine() {
+            outlineController.focus(sourceLine: line)
+        }
+    }
+
+    private func visibleSourceLine() -> Int? {
+        if viewMode != .reading, let source = sourceTextView {
+            let y = source.visibleRect.minY + 12
+            let char = source.characterIndexForInsertion(at: NSPoint(x: source.visibleRect.midX, y: y))
+            return sourceLine(atUTF16: char)
+        }
+        if viewMode != .source, let reading = readingTextView {
+            let y = reading.visibleRect.minY + 12
+            let char = reading.characterIndexForInsertion(at: NSPoint(x: reading.visibleRect.midX, y: y))
+            return sourceLine(forReadingUTF16: char)
+        }
+        return nil
+    }
+
+    private func sourceLine(atWindowPoint point: NSPoint) -> Int? {
+        if viewMode != .reading, let source = sourceTextView {
+            let local = source.convert(point, from: nil)
+            if source.visibleRect.contains(local) {
+                return sourceLine(atUTF16: source.characterIndexForInsertion(at: local))
+            }
+        }
+        if viewMode != .source, let reading = readingTextView {
+            let local = reading.convert(point, from: nil)
+            if reading.visibleRect.contains(local) {
+                return sourceLine(forReadingUTF16: reading.characterIndexForInsertion(at: local))
+            }
+        }
+        return nil
+    }
+
+    private func sourceLine(atUTF16 index: Int) -> Int {
+        snapshot.sourceMap.original.prefix(max(0, index)).reduce(1) {
+            $1 == "\n" || $1 == "\r" ? $0 + 1 : $0
+        }
+    }
+
+    private func sourceLine(forReadingUTF16 char: Int) -> Int? {
+        if let id = readingRanges.first(where: { NSLocationInRange(char, $0.value) })?.key,
+           let node = findBlock(id, in: snapshot.nodes) {
+            return node.source.startLine
+        }
+        return nil
     }
 
     private func syncScroll(fromSource: Bool) {
