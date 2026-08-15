@@ -2,20 +2,17 @@ import AppKit
 
 final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
     var items: [OutlineItem] = [] {
-        didSet { reload() }
-    }
-    var axis: NSUserInterfaceLayoutOrientation = .vertical {
-        didSet { applyAxis() }
+        didSet {
+            emptyLabel?.isHidden = !items.isEmpty
+            tableView.reloadData()
+        }
     }
     var onSelect: ((OutlineItem) -> Void)?
     var onDockDrag: ((NSGestureRecognizer.State, NSPoint) -> Void)?
     var onChoosePlacement: ((OutlinePlacement) -> Void)?
 
     private let tableView = NSTableView()
-    private let chipScroll = NSScrollView()
-    private let chipStack = NSStackView()
     private var emptyLabel: NSTextField?
-    private var tableScroll: NSScrollView?
     private var dockDragging = false
 
     override func loadView() {
@@ -69,31 +66,10 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         tableView.target = self
         tableView.action = #selector(clicked)
         scroll.documentView = tableView
-        tableScroll = scroll
-
-        chipStack.orientation = .horizontal
-        chipStack.alignment = .centerY
-        chipStack.spacing = 6
-        chipStack.edgeInsets = NSEdgeInsets(top: 0, left: 4, bottom: 0, right: 8)
-        chipScroll.drawsBackground = false
-        chipScroll.hasHorizontalScroller = true
-        chipScroll.hasVerticalScroller = false
-        chipScroll.autohidesScrollers = true
-        chipScroll.borderType = .noBorder
-        chipScroll.documentView = chipStack
-        chipScroll.translatesAutoresizingMaskIntoConstraints = false
-        chipStack.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            chipStack.leadingAnchor.constraint(equalTo: chipScroll.contentView.leadingAnchor),
-            chipStack.topAnchor.constraint(equalTo: chipScroll.contentView.topAnchor),
-            chipStack.bottomAnchor.constraint(equalTo: chipScroll.contentView.bottomAnchor),
-            chipStack.heightAnchor.constraint(equalTo: chipScroll.contentView.heightAnchor),
-        ])
 
         let wrap = NSView()
         wrap.addSubview(headerBar)
         wrap.addSubview(scroll)
-        wrap.addSubview(chipScroll)
         wrap.addSubview(empty)
         NSLayoutConstraint.activate([
             headerBar.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
@@ -103,16 +79,10 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
             scroll.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
             scroll.bottomAnchor.constraint(equalTo: wrap.bottomAnchor),
-            chipScroll.topAnchor.constraint(equalTo: headerBar.bottomAnchor),
-            chipScroll.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 8),
-            chipScroll.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -8),
-            chipScroll.bottomAnchor.constraint(equalTo: wrap.bottomAnchor, constant: -6),
             empty.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 16),
             empty.topAnchor.constraint(equalTo: headerBar.bottomAnchor, constant: 8),
         ])
         view = wrap
-        applyAxis()
-        reload()
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int { items.count }
@@ -150,11 +120,6 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         onSelect?(items[row])
     }
 
-    @objc private func chipClicked(_ sender: NSButton) {
-        guard items.indices.contains(sender.tag) else { return }
-        onSelect?(items[sender.tag])
-    }
-
     @objc private func headerPanned(_ gesture: NSPanGestureRecognizer) {
         let point = gesture.location(in: view.window?.contentView)
         switch gesture.state {
@@ -175,31 +140,6 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
     @objc private func placeBelow() { onChoosePlacement?(.belowLibrary) }
     @objc private func placeTop() { onChoosePlacement?(.top) }
     @objc private func placeTrailing() { onChoosePlacement?(.trailing) }
-
-    private func applyAxis() {
-        let horizontal = axis == .horizontal
-        tableScroll?.isHidden = horizontal
-        chipScroll.isHidden = !horizontal
-        rebuildChips()
-    }
-
-    private func reload() {
-        emptyLabel?.isHidden = !items.isEmpty
-        tableView.reloadData()
-        rebuildChips()
-    }
-
-    private func rebuildChips() {
-        chipStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        for (index, item) in items.enumerated() {
-            let button = NSButton(title: item.title, target: self, action: #selector(chipClicked(_:)))
-            button.bezelStyle = .flexiblePush
-            button.controlSize = .small
-            button.tag = index
-            button.font = .systemFont(ofSize: 11, weight: item.level <= 1 ? .semibold : .regular)
-            chipStack.addArrangedSubview(button)
-        }
-    }
 
     private func makePlacementMenu() -> NSMenu {
         let menu = NSMenu()
