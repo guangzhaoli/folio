@@ -179,4 +179,35 @@ final class EncodingTests: XCTestCase {
         wait(for: [opened], timeout: 5)
         window.close()
     }
+
+    func testReplaceDocumentKeepsWindow() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("folio-replace-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let first = directory.appendingPathComponent("one.md")
+        let second = directory.appendingPathComponent("two.md")
+        try Data("# one\n".utf8).write(to: first)
+        try Data("# two\n".utf8).write(to: second)
+
+        let window = MainWindowController()
+        window.showWindow(nil)
+        let originalWindow = window.window
+        FolioDocumentController.folio.openWorkspace(at: directory, in: window, forceCurrentWindow: true)
+        XCTAssertEqual(window.workspace?.rootURL, directory.standardizedFileURL)
+
+        let opened = expectation(description: "replaced")
+        FolioDocumentController.folio.openMarkdown(at: first, in: window)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            FolioDocumentController.folio.replaceDocument(in: window, with: second)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                XCTAssertEqual(window.markdownDocument?.textStorage.string, "# two\n")
+                XCTAssertTrue(window.window === originalWindow)
+                XCTAssertNotNil(window.workspace)
+                opened.fulfill()
+            }
+        }
+        wait(for: [opened], timeout: 5)
+        window.close()
+    }
 }

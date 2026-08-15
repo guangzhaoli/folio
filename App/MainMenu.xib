@@ -75,10 +75,15 @@
                                     <action selector="openDocument:" target="-1" id="pbF-Sw-XBd"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Open Folder…" enabled="NO" keyEquivalent="o" id="kGa-f5-SBd">
+                            <menuItem title="Open Folder…" keyEquivalent="o" id="kGa-f5-SBd">
                                 <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
                                 <connections>
                                     <action selector="openWorkspace:" target="-1" id="oWs-01-nop"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Open Enclosing Folder" id="kGa-f5-enc">
+                                <connections>
+                                    <action selector="openEnclosingFolder:" target="-1" id="oWs-02-enc"/>
                                 </connections>
                             </menuItem>
                             <menuItem title="Open Recent" id="tXI-mr-wws">
@@ -98,6 +103,11 @@
                             <menuItem title="Close" keyEquivalent="w" id="DVo-aG-piG">
                                 <connections>
                                     <action selector="performClose:" target="-1" id="HmO-Ls-i7Q"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Close File" id="DVo-aG-cFl">
+                                <connections>
+                                    <action selector="closeFile:" target="-1" id="cFl-01-act"/>
                                 </connections>
                             </menuItem>
                             <menuItem title="Save" keyEquivalent="s" id="pxx-59-PXV">
@@ -367,6 +377,18 @@
                                 <modifierMask key="keyEquivalentModifierMask" control="YES" command="YES"/>
                                 <connections>
                                     <action selector="toggleOutline:" target="-1" id="vmd-out-act"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Next File" keyEquivalent="↓" id="vmd-nxt-001">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="nextFile:" target="-1" id="vmd-nxt-act"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Previous File" keyEquivalent="↑" id="vmd-prv-001">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="previousFile:" target="-1" id="vmd-prv-act"/>
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="vmd-sep-001"/>
