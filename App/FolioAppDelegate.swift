@@ -13,6 +13,7 @@ final class FolioAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.register(defaults: [
             "defaultViewMode": "split",
+            "folio.viewMode": ViewMode.split.rawValue,
             "readingFontSize": 17.0,
             "showSidebarWhenOpeningFolder": true,
             "appearance": "followSystem",

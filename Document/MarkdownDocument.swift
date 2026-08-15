@@ -13,6 +13,9 @@ final class MarkdownDocument: NSDocument, NSTextStorageDelegate {
     private(set) var encoding: String.Encoding = .utf8
     private var didWarnUTF8Conversion = false
     weak var attachedSourceView: NSTextView?
+    private(set) var parseGeneration: UInt64 = 0
+    private(set) var snapshot: ParseSnapshot = .empty
+    var onSnapshot: ((ParseSnapshot) -> Void)?
 
     override init() {
         super.init()
@@ -51,6 +54,7 @@ final class MarkdownDocument: NSDocument, NSTextStorageDelegate {
         )
         textStorage.delegate = self
         updateChangeCount(.changeCleared)
+        scheduleParse()
     }
 
     override func data(ofType typeName: String) throws -> Data {
@@ -101,6 +105,22 @@ final class MarkdownDocument: NSDocument, NSTextStorageDelegate {
     ) {
         guard editedMask.contains(.editedCharacters) else { return }
         updateChangeCount(.changeDone)
+        scheduleParse()
+    }
+
+    func scheduleParse() {
+        if attachedSourceView?.hasMarkedText() == true { return }
+        parseGeneration += 1
+        let generation = parseGeneration
+        let text = textStorage.string
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let parsed = MarkdownParser.parse(text: text, generation: generation)
+            DispatchQueue.main.async {
+                guard let self, generation == self.parseGeneration else { return }
+                self.snapshot = parsed
+                self.onSnapshot?(parsed)
+            }
+        }
     }
 
     private func presentUTF8ConversionAlert(then continueSave: @escaping () -> Void) {
