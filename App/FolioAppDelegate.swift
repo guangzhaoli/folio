@@ -29,4 +29,10 @@ final class FolioAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }
+
+    func application(_ sender: NSApplication, open urls: [URL]) {
+        for url in urls where !url.hasDirectoryPath {
+            FolioDocumentController.folio.openMarkdown(at: url)
+        }
+    }
 }

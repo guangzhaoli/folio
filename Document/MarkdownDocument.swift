@@ -110,6 +110,7 @@ final class MarkdownDocument: NSDocument, NSTextStorageDelegate {
         window.minSize = NSSize(width: 480, height: 320)
         window.contentView = scrollView
         window.center()
+        window.makeKeyAndOrderFront(nil)
 
         addWindowController(NSWindowController(window: window))
     }
