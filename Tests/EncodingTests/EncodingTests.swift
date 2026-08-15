@@ -141,4 +141,42 @@ final class EncodingTests: XCTestCase {
         let types = MarkdownDocument().writableTypes(for: .saveOperation)
         XCTAssertEqual(types, ["net.daringfireball.markdown", "org.folio.markdown"])
     }
+
+    func testTypeForContentsMapsMarkdownExtensions() throws {
+        let controller = FolioDocumentController.folio
+        for ext in ["md", "markdown", "mdown", "mkd", "mdwn"] {
+            let url = URL(fileURLWithPath: "/tmp/note.\(ext)")
+            XCTAssertEqual(
+                try controller.typeForContents(of: url),
+                FolioDocumentController.markdownType
+            )
+        }
+    }
+
+    func testOpenReusesEmptyWindow() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("folio-window-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("reuse.md")
+        try Data("# reuse\n".utf8).write(to: url)
+
+        let window = MainWindowController()
+        window.showWindow(nil)
+        window.window?.makeKeyAndOrderFront(nil)
+        let originalWindow = window.window
+        XCTAssertNotNil(originalWindow)
+        XCTAssertNil(window.document)
+
+        let opened = expectation(description: "opened")
+        FolioDocumentController.folio.openMarkdown(at: url, in: window)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            XCTAssertEqual(window.markdownDocument?.textStorage.string, "# reuse\n")
+            XCTAssertTrue(window.window === originalWindow)
+            XCTAssertEqual(window.window?.title, "reuse.md")
+            opened.fulfill()
+        }
+        wait(for: [opened], timeout: 5)
+        window.close()
+    }
 }
