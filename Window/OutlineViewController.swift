@@ -1,5 +1,27 @@
 import AppKit
 
+private final class PathCapsule: NSView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        wantsLayer = true
+    }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        layer?.cornerRadius = 8
+        layer?.cornerCurve = .continuous
+        layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.06).cgColor
+        layer?.borderWidth = 1
+        layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.35).cgColor
+    }
+}
+
 private final class OutlineDragRecognizer: NSPanGestureRecognizer {
     private(set) var mouseDownTime: TimeInterval = 0
 
@@ -28,6 +50,8 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
     private let tableScroll = NSScrollView()
     private let crumbScroll = NSScrollView()
     private let crumbStack = NSStackView()
+    private var pathHostView: NSView?
+    private var pathCapsule: PathCapsule?
     private var emptyLabel: NSTextField?
     private var crumbs: [OutlineItem] = []
     private var focusedLine = 1
@@ -67,25 +91,28 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
 
         crumbStack.orientation = .horizontal
         crumbStack.alignment = .centerY
-        crumbStack.spacing = 2
+        crumbStack.spacing = 4
         crumbStack.translatesAutoresizingMaskIntoConstraints = false
+
+        let capsule = PathCapsule()
+        capsule.translatesAutoresizingMaskIntoConstraints = false
+        capsule.addSubview(crumbStack)
+        pathCapsule = capsule
+
+        let pathHost = NSView()
+        pathHost.translatesAutoresizingMaskIntoConstraints = false
+        pathHost.addSubview(capsule)
         crumbScroll.drawsBackground = false
-        crumbScroll.hasHorizontalScroller = true
+        crumbScroll.hasHorizontalScroller = false
         crumbScroll.hasVerticalScroller = false
-        crumbScroll.autohidesScrollers = true
         crumbScroll.borderType = .noBorder
         crumbScroll.translatesAutoresizingMaskIntoConstraints = false
-        crumbScroll.documentView = crumbStack
-        NSLayoutConstraint.activate([
-            crumbStack.leadingAnchor.constraint(equalTo: crumbScroll.contentView.leadingAnchor, constant: 8),
-            crumbStack.topAnchor.constraint(equalTo: crumbScroll.contentView.topAnchor),
-            crumbStack.bottomAnchor.constraint(equalTo: crumbScroll.contentView.bottomAnchor),
-            crumbStack.heightAnchor.constraint(equalTo: crumbScroll.contentView.heightAnchor),
-        ])
+        crumbScroll.documentView = nil
+        pathHostView = pathHost
 
         let wrap = NSView()
         wrap.addSubview(tableScroll)
-        wrap.addSubview(crumbScroll)
+        wrap.addSubview(pathHost)
         wrap.addSubview(empty)
         wrap.menu = makePlacementMenu()
         NSLayoutConstraint.activate([
@@ -93,11 +120,21 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
             tableScroll.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
             tableScroll.topAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.topAnchor),
             tableScroll.bottomAnchor.constraint(equalTo: wrap.bottomAnchor),
-            crumbScroll.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
-            crumbScroll.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
-            crumbScroll.topAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.topAnchor),
-            crumbScroll.bottomAnchor.constraint(equalTo: wrap.bottomAnchor),
-            empty.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 12),
+            pathHost.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
+            pathHost.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
+            pathHost.topAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.topAnchor),
+            pathHost.bottomAnchor.constraint(equalTo: wrap.bottomAnchor),
+            capsule.centerXAnchor.constraint(equalTo: pathHost.centerXAnchor),
+            capsule.centerYAnchor.constraint(equalTo: pathHost.centerYAnchor),
+            capsule.heightAnchor.constraint(equalToConstant: 26),
+            capsule.leadingAnchor.constraint(greaterThanOrEqualTo: pathHost.leadingAnchor, constant: 28),
+            capsule.trailingAnchor.constraint(lessThanOrEqualTo: pathHost.trailingAnchor, constant: -28),
+            capsule.widthAnchor.constraint(lessThanOrEqualToConstant: 720),
+            crumbStack.leadingAnchor.constraint(equalTo: capsule.leadingAnchor, constant: 12),
+            crumbStack.trailingAnchor.constraint(equalTo: capsule.trailingAnchor, constant: -12),
+            crumbStack.topAnchor.constraint(equalTo: capsule.topAnchor),
+            crumbStack.bottomAnchor.constraint(equalTo: capsule.bottomAnchor),
+            empty.centerXAnchor.constraint(equalTo: wrap.centerXAnchor),
             empty.centerYAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.centerYAnchor),
         ])
         let drag = OutlineDragRecognizer(target: self, action: #selector(treeDragged(_:)))
@@ -224,7 +261,8 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
 
     private func applyMode() {
         tableScroll.isHidden = showsBreadcrumb
-        crumbScroll.isHidden = !showsBreadcrumb
+        crumbScroll.isHidden = true
+        pathHostView?.isHidden = !showsBreadcrumb
         rebuildCrumbs()
     }
 
@@ -262,13 +300,15 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         guard showsBreadcrumb else { return }
         if crumbs.isEmpty {
             emptyLabel?.isHidden = items.isEmpty
+            pathCapsule?.isHidden = true
             return
         }
         emptyLabel?.isHidden = true
+        pathCapsule?.isHidden = false
         for (index, crumb) in crumbs.enumerated() {
             if index > 0 {
                 let sep = NSTextField(labelWithString: "›")
-                sep.font = .systemFont(ofSize: 12, weight: .medium)
+                sep.font = .systemFont(ofSize: 11, weight: .medium)
                 sep.textColor = .tertiaryLabelColor
                 sep.setContentHuggingPriority(.required, for: .horizontal)
                 crumbStack.addArrangedSubview(sep)
@@ -278,13 +318,15 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
             button.tag = index
             button.lineBreakMode = .byTruncatingTail
             button.font = index == crumbs.count - 1
-                ? .systemFont(ofSize: 12, weight: .semibold)
-                : .systemFont(ofSize: 12)
-            button.image = NSImage(systemSymbolName: "chevron.down", accessibilityDescription: nil)
-            button.imagePosition = .imageRight
-            button.symbolConfiguration = .init(pointSize: 8, weight: .semibold)
+                ? .systemFont(ofSize: 12, weight: .medium)
+                : .systemFont(ofSize: 12, weight: .regular)
             button.contentTintColor = index == crumbs.count - 1 ? .labelColor : .secondaryLabelColor
-            button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+            button.setContentCompressionResistancePriority(
+                index == crumbs.count - 1 ? .defaultHigh : .defaultLow,
+                for: .horizontal
+            )
+            button.toolTip = crumb.title
             crumbStack.addArrangedSubview(button)
         }
     }
