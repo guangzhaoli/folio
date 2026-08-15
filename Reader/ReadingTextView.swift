@@ -34,7 +34,7 @@ final class ReadingTextView: NSTextView {
     }
 
     private func applyColumn(_ width: CGFloat) {
-        guard let container = textContainer else { return }
+        guard let container = textContainer, width > 120 else { return }
         let usable = Self.usableWidth(in: width)
         container.widthTracksTextView = false
         container.containerSize = NSSize(width: usable, height: .greatestFiniteMagnitude)

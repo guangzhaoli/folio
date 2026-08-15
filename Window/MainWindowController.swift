@@ -15,8 +15,19 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private var inspectorItem: NSSplitViewItem?
     private let fileSidebar = SidebarViewController()
     private let outlineController = OutlineViewController()
-    private(set) var workspace: Workspace?
+    private var libraryHost: NSViewController?
     private var editorHost: NSViewController?
+    private var trailingHost: NSViewController?
+    private var librarySplit: NSSplitView?
+    private var belowDock: NSView?
+    private var topDock: NSView?
+    private var topDockHeight: NSLayoutConstraint?
+    private var belowDockHeight: NSLayoutConstraint?
+    private var dropOverlay: OutlineDropOverlay?
+    private var outlinePlacement = OutlinePlacement.stored
+    private var outlineVisible = OutlinePlacement.isVisible
+    private var measureWork: DispatchWorkItem?
+    private(set) var workspace: Workspace?
     private var placeholderView: NSView?
     private var viewMode: ViewMode = .stored
     private var snapshot = ParseSnapshot.empty
@@ -56,12 +67,26 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
 
     func showEmptyState() {
         prepareForDocumentSwap()
+        detachOutline()
+        if fileSidebar.parent != nil {
+            fileSidebar.view.removeFromSuperview()
+            fileSidebar.removeFromParent()
+        }
+        dropOverlay?.removeFromSuperview()
+        dropOverlay = nil
         workspace = nil
         rootSplit = nil
         sidebarItem = nil
         inspectorItem = nil
         editorSplit = nil
+        libraryHost = nil
         editorHost = nil
+        trailingHost = nil
+        librarySplit = nil
+        belowDock = nil
+        topDock = nil
+        topDockHeight = nil
+        belowDockHeight = nil
         placeholderView = nil
         sourceTextView = nil
         editorScrollView = nil
@@ -155,8 +180,16 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             menuItem.state = viewMode == .reading ? .on : .off
             return markdownDocument != nil
         case #selector(toggleOutline(_:)):
-            let hidden = inspectorItem?.isCollapsed ?? true
-            menuItem.title = hidden ? "Show Outline" : "Hide Outline"
+            menuItem.title = outlineVisible ? "Hide Outline" : "Show Outline"
+            return markdownDocument != nil
+        case #selector(placeOutlineBelow(_:)):
+            menuItem.state = outlinePlacement == .belowLibrary ? .on : .off
+            return markdownDocument != nil
+        case #selector(placeOutlineTop(_:)):
+            menuItem.state = outlinePlacement == .top ? .on : .off
+            return markdownDocument != nil
+        case #selector(placeOutlineTrailing(_:)):
+            menuItem.state = outlinePlacement == .trailing ? .on : .off
             return markdownDocument != nil
         case #selector(nextFile(_:)), #selector(previousFile(_:)):
             return workspace != nil && markdownDocument?.fileURL != nil
@@ -172,8 +205,14 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     @objc func showReading(_ sender: Any?) { setViewMode(.reading) }
 
     @objc func toggleOutline(_ sender: Any?) {
-        inspectorItem?.animator().isCollapsed.toggle()
+        outlineVisible.toggle()
+        OutlinePlacement.persistVisible(outlineVisible)
+        applyOutlinePlacement()
     }
+
+    @objc func placeOutlineBelow(_ sender: Any?) { setOutlinePlacement(.belowLibrary) }
+    @objc func placeOutlineTop(_ sender: Any?) { setOutlinePlacement(.top) }
+    @objc func placeOutlineTrailing(_ sender: Any?) { setOutlinePlacement(.trailing) }
 
     @objc func nextFile(_ sender: Any?) {
         guard let current = markdownDocument?.fileURL,
@@ -279,18 +318,50 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         outlineController.onSelect = { [weak self] item in
             self?.jump(to: item)
         }
+        outlineController.onDockDrag = { [weak self] state, point in
+            self?.handleOutlineDockDrag(state, at: point)
+        }
+        outlineController.onChoosePlacement = { [weak self] placement in
+            self?.setOutlinePlacement(placement)
+        }
 
-        let sidebar = NSSplitViewItem(sidebarWithViewController: fileSidebar)
+        let below = NSView(frame: NSRect(x: 0, y: 0, width: 240, height: 180))
+        belowDock = below
+        let librarySplitView = NSSplitView()
+        librarySplitView.isVertical = false
+        librarySplitView.dividerStyle = .thin
+        fileSidebar.view.frame = NSRect(x: 0, y: 0, width: 240, height: 480)
+        librarySplitView.addArrangedSubview(fileSidebar.view)
+        librarySplitView.addArrangedSubview(below)
+        let belowHeight = below.heightAnchor.constraint(equalToConstant: 180)
+        belowHeight.priority = .defaultHigh
+        belowHeight.isActive = true
+        belowDockHeight = belowHeight
+        librarySplit = librarySplitView
+
+        let library = NSViewController()
+        library.addChild(fileSidebar)
+        library.view = librarySplitView
+        libraryHost = library
+
+        let sidebar = NSSplitViewItem(sidebarWithViewController: library)
         sidebar.minimumThickness = 200
         sidebar.maximumThickness = 320
         sidebar.canCollapse = true
-        sidebar.isCollapsed = workspace == nil
+        sidebar.isCollapsed = workspace == nil && outlinePlacement != .belowLibrary
         sidebarItem = sidebar
 
         let host = NSViewController()
         let container = NSView()
         host.view = container
         editorHost = host
+
+        let top = NSView()
+        top.translatesAutoresizingMaskIntoConstraints = false
+        topDock = top
+        container.addSubview(top)
+        let topHeight = top.heightAnchor.constraint(equalToConstant: 0)
+        topDockHeight = topHeight
 
         let placeholder = NSTextField(labelWithString: "Select a Markdown file in the sidebar")
         placeholder.font = .systemFont(ofSize: 15)
@@ -308,11 +379,15 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         editorSplit = split
         container.addSubview(split)
         NSLayoutConstraint.activate([
+            top.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            top.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            top.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor),
+            topHeight,
             placeholder.centerXAnchor.constraint(equalTo: container.safeAreaLayoutGuide.centerXAnchor),
             placeholder.centerYAnchor.constraint(equalTo: container.safeAreaLayoutGuide.centerYAnchor),
             split.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             split.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            split.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor),
+            split.topAnchor.constraint(equalTo: top.bottomAnchor),
             split.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
 
@@ -328,11 +403,14 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         let editorItem = NSSplitViewItem(viewController: host)
         editorItem.minimumThickness = 360
 
-        let inspector = NSSplitViewItem(inspectorWithViewController: outlineController)
+        let trailing = NSViewController()
+        trailing.view = NSView()
+        trailingHost = trailing
+        let inspector = NSSplitViewItem(inspectorWithViewController: trailing)
         inspector.minimumThickness = 168
         inspector.maximumThickness = 260
         inspector.canCollapse = true
-        inspector.isCollapsed = markdownDocument == nil
+        inspector.isCollapsed = true
         inspectorItem = inspector
 
         let splitController = NSSplitViewController()
@@ -342,16 +420,153 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         window?.contentViewController = splitController
         applyViewMode()
         setEditorVisible(markdownDocument != nil)
+        applyOutlinePlacement()
     }
 
     private func setEditorVisible(_ visible: Bool) {
         editorSplit?.isHidden = !visible
         placeholderView?.isHidden = visible
-        sidebarItem?.isCollapsed = workspace == nil
-        inspectorItem?.isCollapsed = !visible
+        applyOutlinePlacement()
         if visible {
             refreshEditorLayout()
         }
+    }
+
+    private func setOutlinePlacement(_ placement: OutlinePlacement) {
+        outlinePlacement = placement
+        outlineVisible = true
+        placement.persist()
+        OutlinePlacement.persistVisible(true)
+        applyOutlinePlacement()
+        DispatchQueue.main.async { [weak self] in
+            self?.refreshEditorLayout()
+            self?.apply(snapshot: self?.snapshot ?? .empty)
+        }
+    }
+
+    private func applyOutlinePlacement() {
+        let show = outlineVisible && markdownDocument != nil
+        detachOutline()
+        belowDock?.isHidden = true
+        topDock?.isHidden = true
+        topDockHeight?.constant = 0
+        belowDockHeight?.constant = 0
+        inspectorItem?.isCollapsed = true
+        sidebarItem?.isCollapsed = workspace == nil && !(show && outlinePlacement == .belowLibrary)
+
+        guard show else { return }
+        switch outlinePlacement {
+        case .belowLibrary:
+            guard let belowDock, let libraryHost else { return }
+            belowDock.isHidden = false
+            belowDockHeight?.constant = 200
+            outlineController.axis = .vertical
+            embed(outlineController, in: belowDock, parent: libraryHost)
+            sidebarItem?.isCollapsed = false
+        case .top:
+            guard let topDock, let editorHost else { return }
+            topDock.isHidden = false
+            topDockHeight?.constant = 84
+            outlineController.axis = .horizontal
+            embed(outlineController, in: topDock, parent: editorHost)
+        case .trailing:
+            guard let host = trailingHost else { return }
+            inspectorItem?.isCollapsed = false
+            outlineController.axis = .vertical
+            embed(outlineController, in: host.view, parent: host)
+        }
+        librarySplit?.adjustSubviews()
+    }
+
+    private func embed(_ child: NSViewController, in host: NSView, parent: NSViewController) {
+        if child.parent != nil {
+            child.view.removeFromSuperview()
+            child.removeFromParent()
+        }
+        parent.addChild(child)
+        child.view.translatesAutoresizingMaskIntoConstraints = false
+        host.addSubview(child.view)
+        NSLayoutConstraint.activate([
+            child.view.leadingAnchor.constraint(equalTo: host.leadingAnchor),
+            child.view.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+            child.view.topAnchor.constraint(equalTo: host.topAnchor),
+            child.view.bottomAnchor.constraint(equalTo: host.bottomAnchor),
+        ])
+    }
+
+    private func detachOutline() {
+        outlineController.view.removeFromSuperview()
+        if outlineController.parent != nil {
+            outlineController.removeFromParent()
+        }
+    }
+
+    private func handleOutlineDockDrag(_ state: NSGestureRecognizer.State, at point: NSPoint) {
+        switch state {
+        case .began:
+            showDropOverlay()
+            dropOverlay?.highlighted = dropOverlay?.placement(at: point)
+        case .changed:
+            dropOverlay?.highlighted = dropOverlay?.placement(at: point)
+        case .ended:
+            if let placement = dropOverlay?.placement(at: point) {
+                setOutlinePlacement(placement)
+            }
+            hideDropOverlay()
+        default:
+            hideDropOverlay()
+        }
+    }
+
+    private func showDropOverlay() {
+        guard let content = window?.contentView else { return }
+        let overlay = dropOverlay ?? OutlineDropOverlay(frame: content.bounds)
+        overlay.autoresizingMask = [.width, .height]
+        overlay.frame = content.bounds
+        overlay.zones = dockZones()
+        overlay.highlighted = nil
+        if overlay.superview == nil {
+            content.addSubview(overlay, positioned: .above, relativeTo: nil)
+        }
+        dropOverlay = overlay
+    }
+
+    private func hideDropOverlay() {
+        dropOverlay?.removeFromSuperview()
+        dropOverlay = nil
+    }
+
+    private func dockZones() -> [OutlinePlacement: NSRect] {
+        guard let content = window?.contentView else { return [:] }
+        let bounds = content.bounds
+        let safe = content.safeAreaInsets
+        let sidebarWidth: CGFloat
+        if sidebarItem?.isCollapsed == false {
+            sidebarWidth = sidebarItem?.viewController.view.bounds.width ?? 220
+        } else {
+            sidebarWidth = 220
+        }
+        let usableHeight = max(120, bounds.height - safe.top - safe.bottom)
+        return [
+            .top: NSRect(
+                x: sidebarWidth + 8,
+                y: bounds.height - safe.top - 92,
+                width: max(160, bounds.width - sidebarWidth - 16),
+                height: 80
+            ),
+            .trailing: NSRect(
+                x: bounds.width - 208,
+                y: safe.bottom + 10,
+                width: 196,
+                height: usableHeight - 20
+            ),
+            .belowLibrary: NSRect(
+                x: 10,
+                y: 10,
+                width: max(180, sidebarWidth - 20),
+                height: min(220, usableHeight * 0.42)
+            ),
+        ]
     }
 
     private func wrapColumn(_ scroll: NSScrollView) -> NSView {
@@ -415,7 +630,13 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         }
         textView.onMeasureChange = { [weak self] _ in
             guard let self else { return }
-            self.apply(snapshot: self.snapshot)
+            self.measureWork?.cancel()
+            let work = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.apply(snapshot: self.snapshot)
+            }
+            self.measureWork = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06, execute: work)
         }
         NotificationCenter.default.addObserver(
             self,
@@ -441,7 +662,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         self.snapshot = snapshot
         outlineController.items = snapshot.outline
         var style = ReaderStyle.default
-        style.measure = readingTextView?.usableWidth ?? ReaderStyle.default.measure
+        let paneWidth = readingTextView?.bounds.width ?? 0
+        if paneWidth >= 120 {
+            style.measure = ReadingTextView.usableWidth(in: paneWidth)
+        }
         let rendered = ReadingRenderer.render(
             snapshot: snapshot,
             baseDirectory: markdownDocument?.fileURL?.deletingLastPathComponent(),
@@ -534,7 +758,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         guard let split = editorSplit else { return }
         split.adjustSubviews()
         if viewMode == .split, split.subviews.count == 2, split.bounds.width > 8 {
-            split.setPosition(split.bounds.width * 0.42, ofDividerAt: 0)
+            let left = split.subviews[0].isHidden ? 0 : split.subviews[0].bounds.width
+            if left < 24 || left > split.bounds.width - 24 {
+                split.setPosition(split.bounds.width * 0.42, ofDividerAt: 0)
+            }
         }
         sourceColumn?.needsLayout = true
         readingColumn?.needsLayout = true
