@@ -253,7 +253,7 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         guard reveal else { return }
         let visible = tableView.rows(in: tableView.visibleRect)
         if !NSLocationInRange(row, visible) {
-            tableView.scrollRowToVisible(row)
+            TextScrolling.scroll(tableView, toRow: row)
         }
     }
 
