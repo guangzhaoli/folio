@@ -279,6 +279,11 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             guard let self else { return }
             self.apply(snapshot: self.snapshot)
         }
+        textView.onMeasureChange = { [weak self] width in
+            guard let self else { return }
+            self.readingTextView?.measure = width
+            self.apply(snapshot: self.snapshot)
+        }
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(readingScrolled),
@@ -302,10 +307,14 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private func apply(snapshot: ParseSnapshot) {
         self.snapshot = snapshot
         outlineController.items = snapshot.outline
+        var style = ReaderStyle.default
+        if let width = readingTextView?.bounds.width, width > 0 {
+            style.measure = max(240, min(style.measure, width - 72))
+        }
         let rendered = ReadingRenderer.render(
             snapshot: snapshot,
             baseDirectory: markdownDocument?.fileURL?.deletingLastPathComponent(),
-            style: .default
+            style: style
         )
         readingRanges = rendered.blockCharRanges
         if let storage = readingTextView?.textStorage {

@@ -13,9 +13,6 @@ enum ReadingRenderer {
         for node in snapshot.nodes {
             appendBlock(node, to: output, ranges: &ranges, style: style, baseDirectory: baseDirectory, listDepth: &listDepth, orderedIndex: 1)
         }
-        if output.length > 0 {
-            output.append(NSAttributedString(string: "\n"))
-        }
         return ReadingDocument(text: output, blockCharRanges: ranges)
     }
 
@@ -32,10 +29,10 @@ enum ReadingRenderer {
         switch node.kind {
         case .heading(let level):
             appendInlines(node.inlines, to: output, attributes: headingAttrs(level: level, style: style), baseDirectory: baseDirectory)
-            output.append(spacer(12))
+            output.append(breakAfter(style.headingSpaceAfter(level)))
         case .paragraph:
-            appendInlines(node.inlines, to: output, attributes: bodyAttrs(style: style, indent: CGFloat(listDepth) * 22), baseDirectory: baseDirectory)
-            output.append(spacer(listDepth > 0 ? 4 : 10))
+            appendInlines(node.inlines, to: output, attributes: bodyAttrs(style: style, indent: CGFloat(listDepth) * style.listStep), baseDirectory: baseDirectory)
+            output.append(breakAfter(listDepth > 0 ? 3 : 12))
         case .list(let ordered):
             var index = 1
             for child in node.children {
@@ -51,66 +48,41 @@ enum ReadingRenderer {
                 index += 1
             }
             if listDepth == 0 {
-                output.append(spacer(6))
+                output.append(breakAfter(8))
             }
         case .item(let checked):
-            listDepth += 1
-            let marker: String
-            if let checked {
-                marker = checked ? "☑   " : "☐   "
-            } else if orderedIndex > 0 {
-                marker = "\(orderedIndex).  "
-            } else {
-                marker = "•   "
-            }
-            let indent = CGFloat(listDepth - 1) * 22
-            var markerAttrs = bodyAttrs(style: style, indent: indent)
-            markerAttrs[.foregroundColor] = NSColor.secondaryLabelColor
-            output.append(NSAttributedString(string: marker, attributes: markerAttrs))
-            if !node.inlines.isEmpty {
-                appendInlines(node.inlines, to: output, attributes: bodyAttrs(style: style, indent: indent + 22), baseDirectory: baseDirectory)
-                output.append(NSAttributedString(string: "\n"))
-            }
-            var childIndex = 1
-            for child in node.children {
-                let nextOrdered: Int
-                if case .list(let ordered) = child.kind {
-                    nextOrdered = ordered ? childIndex : 0
-                } else {
-                    nextOrdered = childIndex
-                }
-                appendBlock(child, to: output, ranges: &ranges, style: style, baseDirectory: baseDirectory, listDepth: &listDepth, orderedIndex: nextOrdered)
-                childIndex += 1
-            }
-            listDepth -= 1
+            appendListItem(
+                node,
+                checked: checked,
+                orderedIndex: orderedIndex,
+                to: output,
+                ranges: &ranges,
+                style: style,
+                baseDirectory: baseDirectory,
+                listDepth: &listDepth
+            )
         case .codeBlock:
             let code = MarkdownParser.plainText(node.inlines)
             appendAttachment(BlockChrome.codeImage(code: code, style: style, maxWidth: style.measure), to: output)
         case .blockQuote:
             let inner = NSMutableAttributedString()
-            var innerDepth = 0
-            for child in node.children {
-                appendBlock(child, to: inner, ranges: &ranges, style: style, baseDirectory: baseDirectory, listDepth: &innerDepth, orderedIndex: 1)
-            }
+            var quoteDepth = 1
+            flattenQuote(node, depth: 1, into: inner, ranges: &ranges, style: style, baseDirectory: baseDirectory, maxDepth: &quoteDepth)
             if inner.length > 0 {
                 trimTrailingNewlines(inner)
-                var quoteAttrs = [NSAttributedString.Key: Any]()
-                quoteAttrs[.foregroundColor] = NSColor.secondaryLabelColor
-                inner.addAttributes(quoteAttrs, range: NSRange(location: 0, length: inner.length))
+                inner.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: NSRange(location: 0, length: inner.length))
             }
-            appendAttachment(BlockChrome.quoteImage(content: inner, maxWidth: style.measure), to: output)
+            appendAttachment(BlockChrome.quoteImage(content: inner, depth: quoteDepth, maxWidth: style.measure), to: output)
         case .thematicBreak:
-            let line = String(repeating: "\u{00A0}", count: 8)
             let ps = NSMutableParagraphStyle()
             ps.alignment = .center
-            ps.paragraphSpacing = 16
+            ps.paragraphSpacing = 18
             ps.paragraphSpacingBefore = 8
-            output.append(NSAttributedString(string: "—  —  —\n", attributes: [
-                .font: NSFont.systemFont(ofSize: 11, weight: .medium),
+            output.append(NSAttributedString(string: "·   ·   ·\n", attributes: [
+                .font: NSFont.systemFont(ofSize: 13, weight: .medium),
                 .foregroundColor: NSColor.tertiaryLabelColor,
                 .paragraphStyle: ps,
             ]))
-            _ = line
         case .table:
             var rows: [[NSAttributedString]] = []
             var headerRows = 0
@@ -120,8 +92,12 @@ enum ReadingRenderer {
                 for cell in child.children {
                     guard case .tableCell = cell.kind else { continue }
                     let piece = NSMutableAttributedString()
-                    let attrs = isHeader ? headerCellAttrs(style: style) : bodyAttrs(style: style, indent: 0)
-                    appendInlines(cell.inlines, to: piece, attributes: attrs, baseDirectory: baseDirectory)
+                    appendInlines(
+                        cell.inlines,
+                        to: piece,
+                        attributes: isHeader ? headerCellAttrs(style: style) : bodyAttrs(style: style, indent: 0),
+                        baseDirectory: baseDirectory
+                    )
                     cells.append(piece)
                 }
                 if isHeader { headerRows += 1 }
@@ -134,7 +110,7 @@ enum ReadingRenderer {
             break
         case .html:
             appendInlines(node.inlines, to: output, attributes: monoAttrs(style: style), baseDirectory: baseDirectory)
-            output.append(spacer(8))
+            output.append(breakAfter(8))
         case .footnoteDefinition:
             for child in node.children {
                 appendBlock(child, to: output, ranges: &ranges, style: style, baseDirectory: baseDirectory, listDepth: &listDepth, orderedIndex: 1)
@@ -147,15 +123,93 @@ enum ReadingRenderer {
         }
     }
 
-    private static func appendAttachment(_ image: NSImage, to output: NSMutableAttributedString) {
-        output.append(NSAttributedString(attachment: BlockChrome.attachment(image: image)))
-        output.append(spacer(14))
+    private static func appendListItem(
+        _ node: BlockNode,
+        checked: Bool?,
+        orderedIndex: Int,
+        to output: NSMutableAttributedString,
+        ranges: inout [BlockID: NSRange],
+        style: ReaderStyle,
+        baseDirectory: URL?,
+        listDepth: inout Int
+    ) {
+        listDepth += 1
+        let marker: String
+        if let checked {
+            marker = checked ? "✓  " : "○  "
+        } else if orderedIndex > 0 {
+            marker = "\(orderedIndex).  "
+        } else {
+            marker = "•  "
+        }
+        let base = CGFloat(listDepth - 1) * style.listStep
+        let markerWidth = ceil((marker as NSString).size(withAttributes: [
+            .font: NSFont.systemFont(ofSize: style.bodyPointSize),
+        ]).width)
+        let hanging = listAttrs(style: style, indent: base, hang: markerWidth)
+
+        let line = NSMutableAttributedString()
+        var markerAttrs = hanging
+        markerAttrs[.foregroundColor] = NSColor.tertiaryLabelColor
+        line.append(NSAttributedString(string: marker, attributes: markerAttrs))
+
+        if !node.inlines.isEmpty {
+            appendInlines(node.inlines, to: line, attributes: hanging, baseDirectory: baseDirectory)
+        } else if let paragraph = node.children.first, case .paragraph = paragraph.kind {
+            appendInlines(paragraph.inlines, to: line, attributes: hanging, baseDirectory: baseDirectory)
+        }
+        line.append(NSAttributedString(string: "\n", attributes: hanging))
+        output.append(line)
+
+        var childIndex = 1
+        for child in node.children {
+            if case .paragraph = child.kind, node.inlines.isEmpty, child.id == node.children.first?.id {
+                continue
+            }
+            let nextOrdered: Int
+            if case .list(let ordered) = child.kind {
+                nextOrdered = ordered ? 1 : 0
+            } else {
+                nextOrdered = childIndex
+            }
+            appendBlock(child, to: output, ranges: &ranges, style: style, baseDirectory: baseDirectory, listDepth: &listDepth, orderedIndex: nextOrdered)
+            childIndex += 1
+        }
+        listDepth -= 1
     }
 
-    private static func spacer(_ after: CGFloat) -> NSAttributedString {
+    private static func flattenQuote(
+        _ node: BlockNode,
+        depth: Int,
+        into output: NSMutableAttributedString,
+        ranges: inout [BlockID: NSRange],
+        style: ReaderStyle,
+        baseDirectory: URL?,
+        maxDepth: inout Int
+    ) {
+        maxDepth = max(maxDepth, depth)
+        var innerDepth = 0
+        for child in node.children {
+            if case .blockQuote = child.kind {
+                flattenQuote(child, depth: depth + 1, into: output, ranges: &ranges, style: style, baseDirectory: baseDirectory, maxDepth: &maxDepth)
+            } else {
+                appendBlock(child, to: output, ranges: &ranges, style: style, baseDirectory: baseDirectory, listDepth: &innerDepth, orderedIndex: 1)
+            }
+        }
+    }
+
+    private static func appendAttachment(_ image: NSImage, to output: NSMutableAttributedString) {
+        output.append(NSAttributedString(attachment: BlockChrome.attachment(image: image)))
+        output.append(breakAfter(16))
+    }
+
+    private static func breakAfter(_ space: CGFloat) -> NSAttributedString {
         let ps = NSMutableParagraphStyle()
-        ps.paragraphSpacing = after
-        return NSAttributedString(string: "\n", attributes: [.font: NSFont.systemFont(ofSize: 4), .paragraphStyle: ps])
+        ps.paragraphSpacing = space
+        return NSAttributedString(string: "\n", attributes: [
+            .font: NSFont.systemFont(ofSize: 2),
+            .paragraphStyle: ps,
+        ])
     }
 
     private static func trimTrailingNewlines(_ text: NSMutableAttributedString) {
@@ -186,7 +240,8 @@ enum ReadingRenderer {
             case .code(let code):
                 var attrs = attributes
                 attrs[.font] = NSFont.monospacedSystemFont(ofSize: (attributes[.font] as? NSFont)?.pointSize ?? 15, weight: .regular)
-                attrs[.backgroundColor] = NSColor.quaternaryLabelColor.withAlphaComponent(0.16)
+                attrs[.backgroundColor] = NSColor.quaternaryLabelColor.withAlphaComponent(0.14)
+                attrs[.foregroundColor] = NSColor.labelColor
                 output.append(NSAttributedString(string: "\u{00A0}\(code)\u{00A0}", attributes: attrs))
             case .strong(let children):
                 var attrs = attributes
@@ -248,38 +303,49 @@ enum ReadingRenderer {
     }
 
     private static func bodyAttrs(style: ReaderStyle, indent: CGFloat) -> [NSAttributedString.Key: Any] {
-        let font = NSFont.systemFont(ofSize: style.bodyPointSize)
         let ps = NSMutableParagraphStyle()
-        ps.lineHeightMultiple = 1.28
+        ps.lineHeightMultiple = style.lineHeight
         ps.paragraphSpacing = 10
         ps.headIndent = indent
         ps.firstLineHeadIndent = indent
         return [
-            .font: font,
+            .font: NSFont.systemFont(ofSize: style.bodyPointSize),
+            .foregroundColor: NSColor.labelColor,
+            .paragraphStyle: ps,
+        ]
+    }
+
+    private static func listAttrs(style: ReaderStyle, indent: CGFloat, hang: CGFloat) -> [NSAttributedString.Key: Any] {
+        let ps = NSMutableParagraphStyle()
+        ps.lineHeightMultiple = style.lineHeight
+        ps.paragraphSpacing = 4
+        ps.firstLineHeadIndent = indent
+        ps.headIndent = indent + hang
+        ps.tabStops = [NSTextTab(textAlignment: .left, location: indent + hang)]
+        return [
+            .font: NSFont.systemFont(ofSize: style.bodyPointSize),
             .foregroundColor: NSColor.labelColor,
             .paragraphStyle: ps,
         ]
     }
 
     private static func headerCellAttrs(style: ReaderStyle) -> [NSAttributedString.Key: Any] {
-        let font = NSFont.systemFont(ofSize: style.bodyPointSize - 1, weight: .semibold)
         let ps = NSMutableParagraphStyle()
         ps.lineBreakMode = .byWordWrapping
         return [
-            .font: font,
+            .font: NSFont.systemFont(ofSize: style.bodyPointSize - 1, weight: .semibold),
             .foregroundColor: NSColor.labelColor,
             .paragraphStyle: ps,
         ]
     }
 
     private static func headingAttrs(level: Int, style: ReaderStyle) -> [NSAttributedString.Key: Any] {
-        let font = NSFont.systemFont(ofSize: style.headingPointSize(level), weight: .semibold)
         let ps = NSMutableParagraphStyle()
-        ps.lineHeightMultiple = 1.15
-        ps.paragraphSpacing = 8
-        ps.paragraphSpacingBefore = level == 1 ? 4 : 14
+        ps.lineHeightMultiple = 1.12
+        ps.paragraphSpacing = style.headingSpaceAfter(level)
+        ps.paragraphSpacingBefore = style.headingSpaceBefore(level)
         return [
-            .font: font,
+            .font: NSFont.systemFont(ofSize: style.headingPointSize(level), weight: .semibold),
             .foregroundColor: NSColor.labelColor,
             .paragraphStyle: ps,
         ]
@@ -288,7 +354,6 @@ enum ReadingRenderer {
     private static func monoAttrs(style: ReaderStyle) -> [NSAttributedString.Key: Any] {
         let ps = NSMutableParagraphStyle()
         ps.lineHeightMultiple = 1.25
-        ps.paragraphSpacing = 8
         return [
             .font: NSFont.monospacedSystemFont(ofSize: style.bodyPointSize - 2, weight: .regular),
             .foregroundColor: NSColor.labelColor,
