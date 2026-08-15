@@ -553,31 +553,31 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         guard let content = window?.contentView else { return [:] }
         let bounds = content.bounds
         let safe = content.safeAreaInsets
-        let sidebarWidth: CGFloat
-        if sidebarItem?.isCollapsed == false {
-            sidebarWidth = sidebarItem?.viewController.view.bounds.width ?? 220
+        let sidebarRect: NSRect
+        if let sidebar = sidebarItem?.viewController.view, sidebarItem?.isCollapsed == false {
+            sidebarRect = sidebar.convert(sidebar.bounds, to: content)
         } else {
-            sidebarWidth = 220
+            sidebarRect = NSRect(x: bounds.minX, y: bounds.minY, width: 220, height: bounds.height)
         }
-        let usableHeight = max(120, bounds.height - safe.top - safe.bottom)
+        let editorLeft = sidebarRect.maxX
         return [
             .top: NSRect(
-                x: sidebarWidth + 8,
-                y: bounds.height - safe.top - 48,
-                width: max(160, bounds.width - sidebarWidth - 16),
+                x: editorLeft + 8,
+                y: bounds.maxY - safe.top - 44,
+                width: max(160, bounds.maxX - editorLeft - 16),
                 height: 36
             ),
             .trailing: NSRect(
-                x: bounds.width - 208,
-                y: safe.bottom + 10,
+                x: bounds.maxX - 208,
+                y: bounds.minY + safe.bottom + 10,
                 width: 196,
-                height: usableHeight - 20
+                height: max(80, bounds.height - safe.top - safe.bottom - 20)
             ),
             .belowLibrary: NSRect(
-                x: 10,
-                y: 10,
-                width: max(180, sidebarWidth - 20),
-                height: min(220, usableHeight * 0.42)
+                x: sidebarRect.minX + 8,
+                y: sidebarRect.minY + 8,
+                width: max(160, sidebarRect.width - 16),
+                height: max(80, sidebarRect.height * 0.45)
             ),
         ]
     }
@@ -733,7 +733,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     }
 
     private func refreshOutlineFocus(at windowPoint: NSPoint? = nil) {
-        guard outlinePlacement == .top, outlineVisible else { return }
+        guard outlineVisible, markdownDocument != nil else { return }
         if let windowPoint, let line = sourceLine(atWindowPoint: windowPoint) {
             outlineController.focus(sourceLine: line)
             return
