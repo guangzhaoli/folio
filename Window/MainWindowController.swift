@@ -679,7 +679,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
 
     private func apply(snapshot: ParseSnapshot) {
         self.snapshot = snapshot
-        outlineController.items = snapshot.outline
+        outlineController.replaceItemsIfNeeded(snapshot.outline)
         var style = ReaderStyle.default
         let paneWidth = readingTextView?.bounds.width ?? 0
         if paneWidth >= 120 {
@@ -697,7 +697,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         if let source = sourceTextView, source.hasMarkedText() == false {
             SourceHighlighter.apply(snapshot: snapshot, to: source)
         }
-        refreshOutlineFocus()
+        refreshOutlineFocus(allowReveal: false)
     }
 
     private func jump(to item: OutlineItem) {
@@ -710,67 +710,65 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         if let reading = readingRanges[item.id] {
             readingTextView?.scrollRangeToVisible(reading)
         }
-        outlineController.focus(sourceLine: item.span.startLine)
+        outlineController.focus(sourceLine: item.span.startLine, allowReveal: true)
     }
 
     @objc private func sourceScrolled() {
-        refreshOutlineFocus()
+        guard !programmaticScroll else { return }
+        refreshOutlineFocus(from: .source)
         syncScroll(fromSource: true)
     }
 
     @objc private func readingScrolled() {
-        refreshOutlineFocus()
+        guard !programmaticScroll else { return }
+        refreshOutlineFocus(from: .reading)
         syncScroll(fromSource: false)
     }
 
     @objc private func sourceSelectionChanged() {
-        refreshOutlineFocus()
+        guard !programmaticScroll, let source = sourceTextView else { return }
+        let location = source.selectedRange().location
+        outlineController.focus(sourceLine: sourceLine(atUTF16: location), allowReveal: false)
     }
 
     private func handleMouseMoved(_ event: NSEvent) {
-        guard event.window === window else { return }
-        refreshOutlineFocus(at: event.locationInWindow)
+        _ = event
     }
 
-    private func refreshOutlineFocus(at windowPoint: NSPoint? = nil) {
+    private enum OutlineFocusOrigin { case source, reading }
+
+    private func refreshOutlineFocus(from origin: OutlineFocusOrigin? = nil, allowReveal: Bool = true) {
         guard outlineVisible, markdownDocument != nil else { return }
-        if let windowPoint, let line = sourceLine(atWindowPoint: windowPoint) {
-            outlineController.focus(sourceLine: line)
-            return
+        let line: Int?
+        switch origin {
+        case .source:
+            line = visibleSourceLine(in: sourceTextView)
+        case .reading:
+            line = visibleReadingLine()
+        case nil:
+            if viewMode == .reading {
+                line = visibleReadingLine()
+            } else {
+                line = visibleSourceLine(in: sourceTextView)
+            }
         }
-        if let line = visibleSourceLine() {
-            outlineController.focus(sourceLine: line)
+        if let line {
+            outlineController.focus(sourceLine: line, allowReveal: allowReveal)
         }
     }
 
-    private func visibleSourceLine() -> Int? {
-        if viewMode != .reading, let source = sourceTextView {
-            let y = source.visibleRect.minY + 12
-            let char = source.characterIndexForInsertion(at: NSPoint(x: source.visibleRect.midX, y: y))
-            return sourceLine(atUTF16: char)
-        }
-        if viewMode != .source, let reading = readingTextView {
-            let y = reading.visibleRect.minY + 12
-            let char = reading.characterIndexForInsertion(at: NSPoint(x: reading.visibleRect.midX, y: y))
-            return sourceLine(forReadingUTF16: char)
-        }
-        return nil
+    private func visibleSourceLine(in textView: NSTextView?) -> Int? {
+        guard let textView else { return nil }
+        let y = textView.visibleRect.minY + textView.visibleRect.height * 0.2
+        let char = textView.characterIndexForInsertion(at: NSPoint(x: textView.visibleRect.midX, y: y))
+        return sourceLine(atUTF16: char)
     }
 
-    private func sourceLine(atWindowPoint point: NSPoint) -> Int? {
-        if viewMode != .reading, let source = sourceTextView {
-            let local = source.convert(point, from: nil)
-            if source.visibleRect.contains(local) {
-                return sourceLine(atUTF16: source.characterIndexForInsertion(at: local))
-            }
-        }
-        if viewMode != .source, let reading = readingTextView {
-            let local = reading.convert(point, from: nil)
-            if reading.visibleRect.contains(local) {
-                return sourceLine(forReadingUTF16: reading.characterIndexForInsertion(at: local))
-            }
-        }
-        return nil
+    private func visibleReadingLine() -> Int? {
+        guard let reading = readingTextView else { return nil }
+        let y = reading.visibleRect.minY + reading.visibleRect.height * 0.2
+        let char = reading.characterIndexForInsertion(at: NSPoint(x: reading.visibleRect.midX, y: y))
+        return sourceLine(forReadingUTF16: char)
     }
 
     private func sourceLine(atUTF16 index: Int) -> Int {
@@ -780,11 +778,14 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     }
 
     private func sourceLine(forReadingUTF16 char: Int) -> Int? {
-        if let id = readingRanges.first(where: { NSLocationInRange(char, $0.value) })?.key,
-           let node = findBlock(id, in: snapshot.nodes) {
-            return node.source.startLine
+        var best: (BlockID, Int)?
+        for (id, range) in readingRanges where NSLocationInRange(char, range) {
+            if best == nil || range.location < best!.1 {
+                best = (id, range.location)
+            }
         }
-        return nil
+        guard let id = best?.0, let node = findBlock(id, in: snapshot.nodes) else { return nil }
+        return node.source.startLine
     }
 
     private func syncScroll(fromSource: Bool) {
