@@ -53,9 +53,9 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         wrap.addSubview(header)
         wrap.addSubview(scroll)
         NSLayoutConstraint.activate([
-            header.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 16),
-            header.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -10),
-            header.topAnchor.constraint(equalTo: wrap.topAnchor, constant: 10),
+            header.leadingAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.leadingAnchor, constant: 16),
+            header.trailingAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.trailingAnchor, constant: -10),
+            header.topAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.topAnchor, constant: 8),
             scroll.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 6),
             scroll.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
