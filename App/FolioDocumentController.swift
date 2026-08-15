@@ -6,5 +6,11 @@ final class FolioDocumentController: NSDocumentController {
         MainWindowController.showEmpty()
     }
 
-    @objc func openWorkspace(_ sender: Any?) {}
+    // Super uses defaultType (nil without CFBundleDocumentTypes) and greys out New.
+    override func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
+        if item.action == #selector(newDocument(_:)) {
+            return true
+        }
+        return super.validateUserInterfaceItem(item)
+    }
 }
