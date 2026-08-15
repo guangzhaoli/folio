@@ -14,11 +14,11 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
 
-        tableView.style = .sourceList
+        tableView.style = .plain
         tableView.headerView = nil
         tableView.backgroundColor = .clear
         tableView.selectionHighlightStyle = .regular
-        tableView.rowHeight = 28
+        tableView.rowHeight = 24
         tableView.addTableColumn(NSTableColumn(identifier: NSUserInterfaceItemIdentifier("title")))
         tableView.dataSource = self
         tableView.delegate = self

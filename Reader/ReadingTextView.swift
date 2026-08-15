@@ -1,10 +1,22 @@
 import AppKit
 
 final class ReadingTextView: NSTextView {
-    var measure: CGFloat = ReaderStyle.default.measure
     var onAppearanceChange: (() -> Void)?
     var onMeasureChange: ((CGFloat) -> Void)?
+
     private var lastUsableWidth: CGFloat = 0
+
+    static let columnMargin: CGFloat = 36
+    static let columnCap: CGFloat = 860
+
+    var usableWidth: CGFloat {
+        Self.usableWidth(in: bounds.width)
+    }
+
+    static func usableWidth(in boundsWidth: CGFloat, cap: CGFloat = columnCap, margin: CGFloat = columnMargin) -> CGFloat {
+        guard boundsWidth > 1 else { return min(cap, 720) }
+        return max(280, min(cap, boundsWidth - margin * 2))
+    }
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
@@ -13,15 +25,23 @@ final class ReadingTextView: NSTextView {
 
     override func layout() {
         super.layout()
-        if let container = textContainer {
-            let usable = max(240, min(measure, bounds.width - 88))
-            container.containerSize = NSSize(width: usable, height: .greatestFiniteMagnitude)
-            container.widthTracksTextView = false
-            textContainerInset = NSSize(width: max(32, (bounds.width - usable) / 2), height: 36)
-            if abs(usable - lastUsableWidth) > 12 {
-                lastUsableWidth = usable
-                onMeasureChange?(usable)
-            }
-        }
+        applyColumn(bounds.width)
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        applyColumn(newSize.width)
+    }
+
+    private func applyColumn(_ width: CGFloat) {
+        guard let container = textContainer else { return }
+        let usable = Self.usableWidth(in: width)
+        container.widthTracksTextView = false
+        container.containerSize = NSSize(width: usable, height: .greatestFiniteMagnitude)
+        let side = max(Self.columnMargin, (max(width, usable) - usable) / 2)
+        textContainerInset = NSSize(width: side, height: 36)
+        guard abs(usable - lastUsableWidth) > 6 else { return }
+        lastUsableWidth = usable
+        onMeasureChange?(usable)
     }
 }

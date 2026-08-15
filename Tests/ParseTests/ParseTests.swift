@@ -72,6 +72,12 @@ final class ParseTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(count, 2, "quote and table should be native block attachments")
     }
 
+    func testReadingMeasureFillsNarrowPane() {
+        XCTAssertEqual(ReadingTextView.usableWidth(in: 400), 328)
+        XCTAssertEqual(ReadingTextView.usableWidth(in: 1000), 860)
+        XCTAssertGreaterThan(ReadingTextView.usableWidth(in: 480), 380)
+    }
+
     func testListUsesHangingIndent() {
         let snap = MarkdownParser.parse(text: "- first item that wraps\n- second\n", generation: 1)
         let doc = ReadingRenderer.render(snapshot: snap, baseDirectory: nil, style: .default)
