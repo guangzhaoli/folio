@@ -29,7 +29,4 @@ final class FolioAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }
-
-    // Drops must not crash before document types exist.
-    func application(_ application: NSApplication, open urls: [URL]) {}
 }

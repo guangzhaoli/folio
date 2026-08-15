@@ -1,12 +1,17 @@
 import AppKit
 
 final class FolioDocumentController: NSDocumentController {
-    // No document type is registered, so the default New path would error.
+    override var defaultType: String? { "net.daringfireball.markdown" }
+
+    override func documentClass(forType typeName: String) -> AnyClass? {
+        MarkdownDocument.self
+    }
+
+    // ⌘N is an empty window until untitled attach exists.
     override func newDocument(_ sender: Any?) {
         MainWindowController.showEmpty()
     }
 
-    // Super uses defaultType (nil without CFBundleDocumentTypes) and greys out New.
     override func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
         if item.action == #selector(newDocument(_:)) {
             return true
