@@ -72,6 +72,31 @@ final class ParseTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(count, 2, "quote and table should be native block attachments")
     }
 
+    func testHeadingPathFollowsDepth() throws {
+        let snap = MarkdownParser.parse(
+            text: "# Title\n\n## Overview\n\n### Hello\n\n## Other\n",
+            generation: 1
+        )
+        let hello = try XCTUnwrap(snap.outline.first { $0.title == "Hello" })
+        let other = try XCTUnwrap(snap.outline.first { $0.title == "Other" })
+        XCTAssertEqual(
+            OutlineItem.path(in: snap.outline, throughLine: hello.span.startLine).map(\.title),
+            ["Title", "Overview", "Hello"]
+        )
+        XCTAssertEqual(
+            OutlineItem.path(in: snap.outline, throughLine: other.span.startLine).map(\.title),
+            ["Title", "Other"]
+        )
+        XCTAssertEqual(
+            OutlineItem.siblings(of: hello, in: snap.outline).map(\.title),
+            ["Hello"]
+        )
+        XCTAssertEqual(
+            OutlineItem.siblings(of: other, in: snap.outline).map(\.title),
+            ["Overview", "Other"]
+        )
+    }
+
     func testReadingMeasureFillsNarrowPane() {
         XCTAssertEqual(ReadingTextView.usableWidth(in: 400), 328)
         XCTAssertEqual(ReadingTextView.usableWidth(in: 1000), 860)

@@ -4,7 +4,7 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
     var items: [OutlineItem] = [] {
         didSet { reload() }
     }
-    var showsHorizontalTree = false {
+    var showsBreadcrumb = false {
         didSet { applyMode() }
     }
     var onSelect: ((OutlineItem) -> Void)?
@@ -13,9 +13,10 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
 
     private let tableView = NSTableView()
     private let tableScroll = NSScrollView()
-    private let treeScroll = NSScrollView()
-    private let treeHost = NSView()
+    private let crumbScroll = NSScrollView()
+    private let crumbStack = NSStackView()
     private var emptyLabel: NSTextField?
+    private var crumbs: [OutlineItem] = []
     private var dockDragging = false
 
     override func loadView() {
@@ -41,17 +42,22 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         tableView.action = #selector(clicked)
         tableScroll.documentView = tableView
 
-        treeScroll.drawsBackground = false
-        treeScroll.hasVerticalScroller = true
-        treeScroll.hasHorizontalScroller = true
-        treeScroll.autohidesScrollers = true
-        treeScroll.borderType = .noBorder
-        treeScroll.translatesAutoresizingMaskIntoConstraints = false
-        treeHost.translatesAutoresizingMaskIntoConstraints = false
-        treeScroll.documentView = treeHost
+        crumbStack.orientation = .horizontal
+        crumbStack.alignment = .centerY
+        crumbStack.spacing = 2
+        crumbStack.translatesAutoresizingMaskIntoConstraints = false
+        crumbScroll.drawsBackground = false
+        crumbScroll.hasHorizontalScroller = true
+        crumbScroll.hasVerticalScroller = false
+        crumbScroll.autohidesScrollers = true
+        crumbScroll.borderType = .noBorder
+        crumbScroll.translatesAutoresizingMaskIntoConstraints = false
+        crumbScroll.documentView = crumbStack
         NSLayoutConstraint.activate([
-            treeHost.leadingAnchor.constraint(equalTo: treeScroll.contentView.leadingAnchor),
-            treeHost.topAnchor.constraint(equalTo: treeScroll.contentView.topAnchor),
+            crumbStack.leadingAnchor.constraint(equalTo: crumbScroll.contentView.leadingAnchor, constant: 22),
+            crumbStack.topAnchor.constraint(equalTo: crumbScroll.contentView.topAnchor),
+            crumbStack.bottomAnchor.constraint(equalTo: crumbScroll.contentView.bottomAnchor),
+            crumbStack.heightAnchor.constraint(equalTo: crumbScroll.contentView.heightAnchor),
         ])
 
         let handle = NSView()
@@ -65,7 +71,7 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
 
         let wrap = NSView()
         wrap.addSubview(tableScroll)
-        wrap.addSubview(treeScroll)
+        wrap.addSubview(crumbScroll)
         wrap.addSubview(empty)
         wrap.addSubview(handle)
         wrap.menu = makePlacementMenu()
@@ -74,26 +80,32 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
             tableScroll.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
             tableScroll.topAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.topAnchor),
             tableScroll.bottomAnchor.constraint(equalTo: wrap.bottomAnchor),
-            treeScroll.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
-            treeScroll.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
-            treeScroll.topAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.topAnchor),
-            treeScroll.bottomAnchor.constraint(equalTo: wrap.bottomAnchor),
-            empty.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 14),
-            empty.topAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.topAnchor, constant: 10),
+            crumbScroll.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
+            crumbScroll.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
+            crumbScroll.topAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.topAnchor),
+            crumbScroll.bottomAnchor.constraint(equalTo: wrap.bottomAnchor),
+            empty.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 22),
+            empty.centerYAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.centerYAnchor),
             handle.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
-            handle.topAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.topAnchor),
-            handle.widthAnchor.constraint(equalToConstant: 22),
+            handle.centerYAnchor.constraint(equalTo: wrap.safeAreaLayoutGuide.centerYAnchor),
+            handle.widthAnchor.constraint(equalToConstant: 20),
             handle.heightAnchor.constraint(equalToConstant: 20),
             grip.centerXAnchor.constraint(equalTo: handle.centerXAnchor),
             grip.centerYAnchor.constraint(equalTo: handle.centerYAnchor),
             grip.widthAnchor.constraint(equalToConstant: 14),
             grip.heightAnchor.constraint(equalToConstant: 14),
         ])
-        let pan = NSPanGestureRecognizer(target: self, action: #selector(headerPanned(_:)))
-        handle.addGestureRecognizer(pan)
+        handle.addGestureRecognizer(NSPanGestureRecognizer(target: self, action: #selector(headerPanned(_:))))
         view = wrap
         applyMode()
         reload()
+    }
+
+    func focus(sourceLine: Int) {
+        let next = OutlineItem.path(in: items, throughLine: sourceLine)
+        guard next.map(\.id) != crumbs.map(\.id) else { return }
+        crumbs = next
+        rebuildCrumbs()
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int { items.count }
@@ -131,7 +143,22 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         onSelect?(items[row])
     }
 
-    @objc private func treeClicked(_ sender: NSButton) {
+    @objc private func crumbClicked(_ sender: NSButton) {
+        guard crumbs.indices.contains(sender.tag) else { return }
+        let current = crumbs[sender.tag]
+        let siblings = OutlineItem.siblings(of: current, in: items)
+        let menu = NSMenu()
+        for (index, sibling) in siblings.enumerated() {
+            let item = NSMenuItem(title: sibling.title, action: #selector(pickSibling(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = items.firstIndex(where: { $0.id == sibling.id }) ?? index
+            item.state = sibling.id == current.id ? .on : .off
+            menu.addItem(item)
+        }
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 2), in: sender)
+    }
+
+    @objc private func pickSibling(_ sender: NSMenuItem) {
         guard items.indices.contains(sender.tag) else { return }
         onSelect?(items[sender.tag])
     }
@@ -158,116 +185,57 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
     @objc private func placeTrailing() { onChoosePlacement?(.trailing) }
 
     private func applyMode() {
-        tableScroll.isHidden = showsHorizontalTree
-        treeScroll.isHidden = !showsHorizontalTree
-        rebuildTree()
+        tableScroll.isHidden = showsBreadcrumb
+        crumbScroll.isHidden = !showsBreadcrumb
+        rebuildCrumbs()
     }
 
     private func reload() {
         emptyLabel?.isHidden = !items.isEmpty
         tableView.reloadData()
-        rebuildTree()
-    }
-
-    private func rebuildTree() {
-        treeHost.subviews.forEach { $0.removeFromSuperview() }
-        guard showsHorizontalTree, !items.isEmpty else { return }
-        let forest = Self.forest(from: items)
-        let indexByID = Dictionary(uniqueKeysWithValues: items.enumerated().map { ($0.element.id, $0.offset) })
-        let rootStack = NSStackView(views: forest.map { makeHorizontalNode($0, indexByID: indexByID) })
-        rootStack.orientation = .vertical
-        rootStack.alignment = .leading
-        rootStack.spacing = 6
-        rootStack.translatesAutoresizingMaskIntoConstraints = false
-        treeHost.addSubview(rootStack)
-        NSLayoutConstraint.activate([
-            rootStack.leadingAnchor.constraint(equalTo: treeHost.leadingAnchor, constant: 22),
-            rootStack.topAnchor.constraint(equalTo: treeHost.topAnchor, constant: 8),
-            rootStack.trailingAnchor.constraint(equalTo: treeHost.trailingAnchor, constant: -12),
-            rootStack.bottomAnchor.constraint(equalTo: treeHost.bottomAnchor, constant: -8),
-        ])
-    }
-
-    private func makeHorizontalNode(_ node: HeadingNode, indexByID: [BlockID: Int]) -> NSView {
-        let button = NSButton(title: node.item.title, target: self, action: #selector(treeClicked(_:)))
-        button.isBordered = false
-        button.alignment = .left
-        button.tag = indexByID[node.item.id] ?? 0
-        button.lineBreakMode = .byTruncatingTail
-        button.font = node.item.level <= 1
-            ? .systemFont(ofSize: 12, weight: .semibold)
-            : .systemFont(ofSize: 12)
-        button.contentTintColor = node.item.level <= 2 ? .labelColor : .secondaryLabelColor
-        button.setContentHuggingPriority(.required, for: .horizontal)
-        button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        button.widthAnchor.constraint(lessThanOrEqualToConstant: 180).isActive = true
-
-        guard !node.children.isEmpty else { return button }
-
-        let children = NSStackView(views: node.children.map { makeHorizontalNode($0, indexByID: indexByID) })
-        children.orientation = .vertical
-        children.alignment = .leading
-        children.spacing = 2
-
-        let connector = NSTextField(labelWithString: "›")
-        connector.font = .systemFont(ofSize: 11, weight: .medium)
-        connector.textColor = .tertiaryLabelColor
-        connector.setContentHuggingPriority(.required, for: .horizontal)
-
-        let row = NSStackView(views: [button, connector, children])
-        row.orientation = .horizontal
-        row.alignment = .top
-        row.spacing = 6
-        return row
-    }
-
-    private struct HeadingNode {
-        var item: OutlineItem
-        var children: [HeadingNode] = []
-    }
-
-    private static func forest(from items: [OutlineItem]) -> [HeadingNode] {
-        var roots: [HeadingNode] = []
-        var stack: [(level: Int, path: [Int])] = []
-        for item in items {
-            while let last = stack.last, last.level >= item.level {
-                stack.removeLast()
-            }
-            if stack.isEmpty {
-                roots.append(HeadingNode(item: item))
-                stack.append((item.level, [roots.count - 1]))
+        if showsBreadcrumb {
+            if crumbs.isEmpty, let first = items.first {
+                crumbs = [first]
             } else {
-                let path = stack[stack.count - 1].path
-                append(item, to: &roots, path: path)
-                var next = path
-                next.append(childCount(roots, path: path) - 1)
-                stack.append((item.level, next))
+                crumbs = OutlineItem.path(
+                    in: items,
+                    throughLine: crumbs.last?.span.startLine ?? items.last?.span.startLine ?? 1
+                )
             }
         }
-        return roots
+        rebuildCrumbs()
     }
 
-    private static func append(_ item: OutlineItem, to roots: inout [HeadingNode], path: [Int]) {
-        func insert(_ node: inout HeadingNode, remaining: ArraySlice<Int>) {
-            if remaining.isEmpty {
-                node.children.append(HeadingNode(item: item))
-                return
+    private func rebuildCrumbs() {
+        crumbStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        guard showsBreadcrumb else { return }
+        if crumbs.isEmpty {
+            emptyLabel?.isHidden = items.isEmpty
+            return
+        }
+        emptyLabel?.isHidden = true
+        for (index, crumb) in crumbs.enumerated() {
+            if index > 0 {
+                let sep = NSTextField(labelWithString: "›")
+                sep.font = .systemFont(ofSize: 12, weight: .medium)
+                sep.textColor = .tertiaryLabelColor
+                sep.setContentHuggingPriority(.required, for: .horizontal)
+                crumbStack.addArrangedSubview(sep)
             }
-            insert(&node.children[remaining[remaining.startIndex]], remaining: remaining.dropFirst())
+            let button = NSButton(title: crumb.title, target: self, action: #selector(crumbClicked(_:)))
+            button.isBordered = false
+            button.tag = index
+            button.lineBreakMode = .byTruncatingTail
+            button.font = index == crumbs.count - 1
+                ? .systemFont(ofSize: 12, weight: .semibold)
+                : .systemFont(ofSize: 12)
+            button.image = NSImage(systemSymbolName: "chevron.down", accessibilityDescription: nil)
+            button.imagePosition = .imageRight
+            button.symbolConfiguration = .init(pointSize: 8, weight: .semibold)
+            button.contentTintColor = index == crumbs.count - 1 ? .labelColor : .secondaryLabelColor
+            button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            crumbStack.addArrangedSubview(button)
         }
-        if path.count == 1 {
-            roots[path[0]].children.append(HeadingNode(item: item))
-        } else {
-            insert(&roots[path[0]], remaining: path.dropFirst())
-        }
-    }
-
-    private static func childCount(_ roots: [HeadingNode], path: [Int]) -> Int {
-        var node = roots[path[0]]
-        for index in path.dropFirst() {
-            node = node.children[index]
-        }
-        return node.children.count
     }
 
     private func makePlacementMenu() -> NSMenu {
