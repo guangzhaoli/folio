@@ -8,7 +8,7 @@ struct ReaderStyle: Sendable {
 
     static let `default` = ReaderStyle(
         bodyPointSize: 17,
-        measure: 620,
+        measure: 780,
         lineHeight: 1.32,
         listStep: 24
     )

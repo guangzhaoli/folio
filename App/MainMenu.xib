@@ -373,7 +373,7 @@
                                     <action selector="showReading:" target="-1" id="vmd-red-act"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Show Outline" keyEquivalent="o" id="vmd-out-001">
+                            <menuItem title="On This Page" keyEquivalent="o" id="vmd-out-001">
                                 <modifierMask key="keyEquivalentModifierMask" control="YES" command="YES"/>
                                 <connections>
                                     <action selector="toggleOutline:" target="-1" id="vmd-out-act"/>

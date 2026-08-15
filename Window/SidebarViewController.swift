@@ -3,6 +3,7 @@ import AppKit
 final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NSOutlineViewDelegate {
     var workspace: Workspace? {
         didSet {
+            headerField?.stringValue = workspace?.rootURL.lastPathComponent ?? "Library"
             outline.reloadData()
             if let workspace {
                 outline.expandItem(workspace.root)
@@ -16,12 +17,19 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
     var onOpenInNewWindow: ((URL) -> Void)?
 
     private let outline = NSOutlineView()
+    private var headerField: NSTextField?
 
     override func loadView() {
+        let header = NSTextField(labelWithString: "Library")
+        header.font = .systemFont(ofSize: 11, weight: .semibold)
+        header.textColor = .secondaryLabelColor
+        header.translatesAutoresizingMaskIntoConstraints = false
+
         let scroll = NSScrollView()
         scroll.drawsBackground = false
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
+        scroll.translatesAutoresizingMaskIntoConstraints = false
 
         outline.style = .sourceList
         outline.headerView = nil
@@ -40,7 +48,25 @@ final class SidebarViewController: NSViewController, NSOutlineViewDataSource, NS
         outline.doubleAction = #selector(clicked)
         outline.menu = makeContextMenu()
         scroll.documentView = outline
-        view = scroll
+
+        let wrap = NSView()
+        wrap.addSubview(header)
+        wrap.addSubview(scroll)
+        NSLayoutConstraint.activate([
+            header.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 16),
+            header.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -10),
+            header.topAnchor.constraint(equalTo: wrap.topAnchor, constant: 10),
+            scroll.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 6),
+            scroll.leadingAnchor.constraint(equalTo: wrap.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: wrap.trailingAnchor),
+            scroll.bottomAnchor.constraint(equalTo: wrap.bottomAnchor),
+        ])
+        headerField = header
+        view = wrap
+    }
+
+    func setLibraryTitle(_ title: String) {
+        headerField?.stringValue = title
     }
 
     func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {

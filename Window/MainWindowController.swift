@@ -12,8 +12,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private var editorSplit: NSSplitView?
     private var rootSplit: NSSplitViewController?
     private var sidebarItem: NSSplitViewItem?
-    private let outlineController = OutlineViewController()
     private let fileSidebar = SidebarViewController()
+    private let jumpBar = HeadingJumpBar()
     private(set) var workspace: Workspace?
     private var editorHost: NSViewController?
     private var placeholderView: NSView?
@@ -91,9 +91,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     }
 
     func revealLibrary() {
-        fileSidebar.view.isHidden = workspace == nil
-        sidebarItem?.isCollapsed = false
-        rootSplit?.splitViewItems.first?.isCollapsed = false
+        sidebarItem?.isCollapsed = workspace == nil
+        fileSidebar.setLibraryTitle(workspace?.rootURL.lastPathComponent ?? "Library")
     }
 
     func showLibraryPlaceholder() {
@@ -128,7 +127,12 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         fileSidebar.selectedURL = document.fileURL
         window?.representedURL = document.fileURL
         window?.title = document.displayName
+        refreshEditorLayout()
         window?.makeFirstResponder(sourceTextView)
+        DispatchQueue.main.async { [weak self] in
+            self?.refreshEditorLayout()
+            self?.refreshSourceDisplay()
+        }
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -149,7 +153,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             menuItem.state = viewMode == .reading ? .on : .off
             return markdownDocument != nil
         case #selector(toggleOutline(_:)):
-            return rootSplit != nil
+            menuItem.title = "On This Page"
+            return markdownDocument != nil && !jumpBar.items.isEmpty
         case #selector(nextFile(_:)), #selector(previousFile(_:)):
             return workspace != nil && markdownDocument?.fileURL != nil
         case #selector(closeFile(_:)):
@@ -164,8 +169,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     @objc func showReading(_ sender: Any?) { setViewMode(.reading) }
 
     @objc func toggleOutline(_ sender: Any?) {
-        guard let item = rootSplit?.splitViewItems.first else { return }
-        item.animator().isCollapsed.toggle()
+        jumpBar.showMenu()
     }
 
     @objc func nextFile(_ sender: Any?) {
@@ -259,41 +263,24 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         fileSidebar.onOpenInNewWindow = { [weak self] url in
             FolioDocumentController.folio.openInNewWindow(url, workspaceRoot: self?.workspace?.rootURL)
         }
-        outlineController.onSelect = { [weak self] item in
+        jumpBar.onSelect = { [weak self] item in
             self?.jump(to: item)
         }
 
-        fileSidebar.view.frame = NSRect(x: 0, y: 0, width: 240, height: 520)
-        outlineController.view.frame = NSRect(x: 0, y: 0, width: 240, height: 168)
-        let stack = NSStackView(views: [fileSidebar.view, outlineController.view])
-        stack.orientation = .vertical
-        stack.alignment = .width
-        stack.spacing = 0
-        stack.distribution = .fill
-        stack.frame = NSRect(x: 0, y: 0, width: 240, height: 700)
-        stack.translatesAutoresizingMaskIntoConstraints = true
-        stack.autoresizingMask = [.width, .height]
-        fileSidebar.view.setContentHuggingPriority(.init(100), for: .vertical)
-        fileSidebar.view.setContentCompressionResistancePriority(.init(100), for: .vertical)
-        outlineController.view.setContentHuggingPriority(.defaultHigh, for: .vertical)
-        let outlineHeight = outlineController.view.heightAnchor.constraint(equalToConstant: 168)
-        outlineHeight.priority = .defaultHigh
-        outlineHeight.isActive = true
-
-        let libraryHost = NSViewController()
-        libraryHost.view = stack
-
-        let sidebar = NSSplitViewItem(sidebarWithViewController: libraryHost)
+        let sidebar = NSSplitViewItem(sidebarWithViewController: fileSidebar)
         sidebar.minimumThickness = 200
-        sidebar.maximumThickness = 360
+        sidebar.maximumThickness = 320
         sidebar.canCollapse = true
-        sidebar.isCollapsed = false
+        sidebar.isCollapsed = workspace == nil
         sidebarItem = sidebar
 
         let host = NSViewController()
         let container = NSView()
         host.view = container
         editorHost = host
+
+        jumpBar.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(jumpBar)
 
         let placeholder = NSTextField(labelWithString: "Select a Markdown file in the sidebar")
         placeholder.font = .systemFont(ofSize: 15)
@@ -302,10 +289,6 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         placeholder.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(placeholder)
         placeholderView = placeholder
-        NSLayoutConstraint.activate([
-            placeholder.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            placeholder.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-        ])
 
         let split = NSSplitView()
         split.isVertical = true
@@ -315,9 +298,15 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         editorSplit = split
         container.addSubview(split)
         NSLayoutConstraint.activate([
+            jumpBar.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            jumpBar.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            jumpBar.topAnchor.constraint(equalTo: container.topAnchor),
+            jumpBar.heightAnchor.constraint(equalToConstant: 30),
+            placeholder.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            placeholder.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             split.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             split.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            split.topAnchor.constraint(equalTo: container.topAnchor),
+            split.topAnchor.constraint(equalTo: jumpBar.bottomAnchor),
             split.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
 
@@ -344,20 +333,20 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
 
     private func setEditorVisible(_ visible: Bool) {
         editorSplit?.isHidden = !visible
+        jumpBar.isHidden = !visible
         placeholderView?.isHidden = visible
-        fileSidebar.view.isHidden = workspace == nil
+        sidebarItem?.isCollapsed = workspace == nil
+        if visible {
+            refreshEditorLayout()
+        }
     }
 
     private func wrapColumn(_ scroll: NSScrollView) -> NSView {
-        scroll.translatesAutoresizingMaskIntoConstraints = false
-        let box = NSView()
+        let box = NSView(frame: NSRect(x: 0, y: 0, width: 480, height: 640))
+        scroll.translatesAutoresizingMaskIntoConstraints = true
+        scroll.autoresizingMask = [.width, .height]
+        scroll.frame = box.bounds
         box.addSubview(scroll)
-        NSLayoutConstraint.activate([
-            scroll.leadingAnchor.constraint(equalTo: box.leadingAnchor),
-            scroll.trailingAnchor.constraint(equalTo: box.trailingAnchor),
-            scroll.topAnchor.constraint(equalTo: box.topAnchor),
-            scroll.bottomAnchor.constraint(equalTo: box.bottomAnchor),
-        ])
         return box
     }
 
@@ -411,9 +400,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             guard let self else { return }
             self.apply(snapshot: self.snapshot)
         }
-        textView.onMeasureChange = { [weak self] width in
+        textView.onMeasureChange = { [weak self] _ in
             guard let self else { return }
-            self.readingTextView?.measure = width
             self.apply(snapshot: self.snapshot)
         }
         NotificationCenter.default.addObserver(
@@ -428,11 +416,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private func applyViewMode() {
         sourceColumn?.isHidden = viewMode == .reading
         readingColumn?.isHidden = viewMode == .source
-        editorSplit?.adjustSubviews()
-        if viewMode == .split, let split = editorSplit, split.subviews.count == 2 {
-            let mid = split.bounds.width / 2
-            split.setPosition(mid, ofDividerAt: 0)
-        }
+        refreshEditorLayout()
         if markdownDocument == nil, workspace != nil {
             window?.subtitle = "Library"
         } else {
@@ -442,11 +426,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
 
     private func apply(snapshot: ParseSnapshot) {
         self.snapshot = snapshot
-        outlineController.items = snapshot.outline
+        jumpBar.items = snapshot.outline
         var style = ReaderStyle.default
-        if let width = readingTextView?.bounds.width, width > 0 {
-            style.measure = max(240, min(style.measure, width - 72))
-        }
+        style.measure = readingTextView?.usableWidth ?? ReaderStyle.default.measure
         let rendered = ReadingRenderer.render(
             snapshot: snapshot,
             baseDirectory: markdownDocument?.fileURL?.deletingLastPathComponent(),
@@ -521,6 +503,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         else { return }
         content.textStorage = document.textStorage
         document.attachedSourceView = textView
+        refreshSourceDisplay()
     }
 
     private func unbindSourceView() {
@@ -530,6 +513,34 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         content.textStorage = NSTextStorage()
         if let document = markdownDocument, document.attachedSourceView === textView {
             document.attachedSourceView = nil
+        }
+    }
+
+    private func refreshEditorLayout() {
+        window?.contentView?.layoutSubtreeIfNeeded()
+        guard let split = editorSplit else { return }
+        split.adjustSubviews()
+        if viewMode == .split, split.subviews.count == 2, split.bounds.width > 8 {
+            split.setPosition(split.bounds.width * 0.42, ofDividerAt: 0)
+        }
+        sourceColumn?.needsLayout = true
+        readingColumn?.needsLayout = true
+        sourceTextView?.needsDisplay = true
+        readingTextView?.needsDisplay = true
+        readingTextView?.needsLayout = true
+    }
+
+    private func refreshSourceDisplay() {
+        guard let textView = sourceTextView else { return }
+        textView.needsLayout = true
+        textView.needsDisplay = true
+        if let layout = textView.textLayoutManager {
+            layout.ensureLayout(for: layout.documentRange)
+            layout.textViewportLayoutController.layoutViewport()
+        }
+        if let scroll = editorScrollView {
+            scroll.reflectScrolledClipView(scroll.contentView)
+            scroll.tile()
         }
     }
 }
