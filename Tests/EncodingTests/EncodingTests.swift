@@ -29,6 +29,18 @@ final class EncodingTests: XCTestCase {
         XCTAssertEqual(result.encoding, .utf16LittleEndian)
     }
 
+    func testUTF16BEBOM() throws {
+        var data = Data([0xFE, 0xFF])
+        for scalar in "Hello".unicodeScalars {
+            let value = UInt16(scalar.value)
+            data.append(UInt8(truncatingIfNeeded: value >> 8))
+            data.append(UInt8(truncatingIfNeeded: value))
+        }
+        let result = try EncodingDetector.decode(data)
+        XCTAssertEqual(result.string, "Hello")
+        XCTAssertEqual(result.encoding, .utf16BigEndian)
+    }
+
     func testGB18030Chinese() throws {
         let original = "中文测试"
         let data = try XCTUnwrap(original.data(using: EncodingDetector.gb18030))
@@ -58,6 +70,17 @@ final class EncodingTests: XCTestCase {
         }
     }
 
+    func testRejectsLatin1Cafe() {
+        let data = Data([0x63, 0x61, 0x66, 0xE9])
+        XCTAssertNil(String(data: data, encoding: .utf8))
+        XCTAssertThrowsError(try EncodingDetector.decode(data)) { error in
+            guard case EncodingDetector.DetectionError.unrecognizedEncoding = error else {
+                XCTFail("expected unrecognizedEncoding, got \(error)")
+                return
+            }
+        }
+    }
+
     func testRejectsFilesOver50MB() {
         let data = Data(count: MarkdownDocument.maximumFileSize + 1)
         let document = MarkdownDocument()
@@ -66,6 +89,30 @@ final class EncodingTests: XCTestCase {
             XCTAssertEqual(nsError.domain, MarkdownDocument.errorDomain)
             XCTAssertEqual(nsError.code, MarkdownDocument.ErrorCode.fileTooLarge.rawValue)
         }
+    }
+
+    func testURLReadRejectsOver50MBAndAcceptsExactly50MB() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("folio-encoding-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let overURL = directory.appendingPathComponent("over.md")
+        try Data(count: MarkdownDocument.maximumFileSize + 1).write(to: overURL)
+        XCTAssertThrowsError(
+            try MarkdownDocument().read(from: overURL, ofType: "net.daringfireball.markdown")
+        ) { error in
+            let nsError = error as NSError
+            XCTAssertEqual(nsError.domain, MarkdownDocument.errorDomain)
+            XCTAssertEqual(nsError.code, MarkdownDocument.ErrorCode.fileTooLarge.rawValue)
+        }
+
+        let exactURL = directory.appendingPathComponent("exact.md")
+        try Data(count: MarkdownDocument.maximumFileSize).write(to: exactURL)
+        let exact = MarkdownDocument()
+        try exact.read(from: exactURL, ofType: "net.daringfireball.markdown")
+        XCTAssertEqual(exact.textStorage.length, MarkdownDocument.maximumFileSize)
+        XCTAssertEqual(exact.encoding, .utf8)
     }
 
     func testSaveIsUTF8WithoutBOM() throws {

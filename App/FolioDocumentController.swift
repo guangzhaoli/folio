@@ -7,12 +7,11 @@ final class FolioDocumentController: NSDocumentController {
         MarkdownDocument.self
     }
 
-    // New is still an empty window; untitled attach lands in PR-02b.
+    // ⌘N is an empty window until untitled attach exists.
     override func newDocument(_ sender: Any?) {
         MainWindowController.showEmpty()
     }
 
-    // New still opens an empty window rather than Untitled.
     override func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
         if item.action == #selector(newDocument(_:)) {
             return true

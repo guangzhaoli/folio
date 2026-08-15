@@ -87,7 +87,6 @@ final class MarkdownDocument: NSDocument, NSTextStorageDelegate {
         super.save(to: url, ofType: typeName, for: saveOperation, completionHandler: completionHandler)
     }
 
-    // Temporary verification window. PR-02b replaces this with an empty method and window-owned attach.
     override func makeWindowControllers() {
         let scrollView = NSTextView.scrollableTextView()
         guard let textView = scrollView.documentView as? NSTextView else { return }
@@ -100,8 +99,6 @@ final class MarkdownDocument: NSDocument, NSTextStorageDelegate {
 
         if let contentStorage = textView.textLayoutManager?.textContentManager as? NSTextContentStorage {
             contentStorage.textStorage = textStorage
-        } else if let layoutManager = textView.layoutManager {
-            layoutManager.replaceTextStorage(textStorage)
         }
 
         let window = NSWindow(
