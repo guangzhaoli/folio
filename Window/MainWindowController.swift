@@ -478,7 +478,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         case .top:
             guard let topDock, let editorHost else { return }
             topDock.isHidden = false
-            topDockHeight?.constant = 32
+            topDockHeight?.constant = 40
             outlineController.showsBreadcrumb = true
             embed(outlineController, in: topDock, parent: editorHost)
             refreshOutlineFocus()
