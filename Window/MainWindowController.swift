@@ -34,6 +34,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private var snapshot = ParseSnapshot.empty
     private var readingRanges: [BlockID: NSRange] = [:]
     private var programmaticScroll = false
+    var pendingFragment: String?
 
     static var all: [MainWindowController] { openControllers }
 
@@ -152,6 +153,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         }
         if document.snapshot.generation > 0 {
             apply(snapshot: document.snapshot)
+            jumpToPendingFragment()
         }
         document.scheduleParse()
         applyViewMode()
@@ -654,6 +656,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             guard let self else { return }
             self.apply(snapshot: self.snapshot)
         }
+        textView.onOpenLink = { [weak self] destination in
+            guard let self else { return }
+            FolioDocumentController.folio.openLink(destination, from: self)
+        }
         textView.onMeasureChange = { [weak self] _ in
             guard let self else { return }
             self.measureWork?.cancel()
@@ -686,6 +692,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
 
     private func apply(snapshot: ParseSnapshot) {
         self.snapshot = snapshot
+        readingTextView?.baseDirectory = markdownDocument?.fileURL?.deletingLastPathComponent()
         outlineController.replaceItemsIfNeeded(snapshot.outline)
         var style = ReaderStyle.default
         let paneWidth = readingTextView?.bounds.width ?? 0
@@ -711,6 +718,20 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             SourceHighlighter.apply(snapshot: snapshot, to: source)
         }
         refreshOutlineFocus(allowReveal: false)
+        jumpToPendingFragment()
+    }
+
+    func jumpToFragment(_ fragment: String) {
+        pendingFragment = fragment
+        jumpToPendingFragment()
+    }
+
+    private func jumpToPendingFragment() {
+        guard let fragment = pendingFragment,
+              let item = OutlineItem.matching(fragment: fragment, in: snapshot.outline)
+        else { return }
+        pendingFragment = nil
+        jump(to: item)
     }
 
     private func jump(to item: OutlineItem) {
