@@ -23,6 +23,7 @@ final class WorkspaceTests: XCTestCase {
         let workspace = Workspace(root: root)
         let names = Set(workspace.markdownFiles().map(\.lastPathComponent))
         XCTAssertEqual(names, ["keep.md", "guide.md"])
+        XCTAssertEqual(workspace.firstMarkdown()?.lastPathComponent, "keep.md")
         XCTAssertFalse(names.contains("lib.md"))
         XCTAssertFalse(names.contains(".secret.md"))
         XCTAssertFalse(names.contains("skip.txt"))
@@ -53,6 +54,7 @@ final class WorkspaceTests: XCTestCase {
 
         let workspace = Workspace(root: root)
         XCTAssertFalse(workspace.containsMarkdown())
+        XCTAssertNil(workspace.firstMarkdown())
         XCTAssertTrue(workspace.markdownFiles().isEmpty)
     }
 }

@@ -11,6 +11,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private var readingColumn: NSView?
     private var editorSplit: NSSplitView?
     private var rootSplit: NSSplitViewController?
+    private var sidebarItem: NSSplitViewItem?
     private let outlineController = OutlineViewController()
     private let fileSidebar = SidebarViewController()
     private(set) var workspace: Workspace?
@@ -56,6 +57,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         prepareForDocumentSwap()
         workspace = nil
         rootSplit = nil
+        sidebarItem = nil
         editorSplit = nil
         editorHost = nil
         placeholderView = nil
@@ -79,13 +81,19 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         }
         fileSidebar.workspace = workspace
         fileSidebar.selectedURL = markdownDocument?.fileURL
-        fileSidebar.view.isHidden = false
+        revealLibrary()
         if markdownDocument == nil {
             showLibraryPlaceholder()
         } else {
             setEditorVisible(true)
             window?.title = markdownDocument?.displayName ?? workspace.rootURL.lastPathComponent
         }
+    }
+
+    func revealLibrary() {
+        fileSidebar.view.isHidden = workspace == nil
+        sidebarItem?.isCollapsed = false
+        rootSplit?.splitViewItems.first?.isCollapsed = false
     }
 
     func showLibraryPlaceholder() {
@@ -255,20 +263,32 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             self?.jump(to: item)
         }
 
-        let library = NSSplitView()
-        library.isVertical = false
-        library.dividerStyle = .thin
-        library.addArrangedSubview(fileSidebar.view)
-        library.addArrangedSubview(outlineController.view)
-        library.setHoldingPriority(NSLayoutConstraint.Priority(260), forSubviewAt: 0)
-        library.setHoldingPriority(NSLayoutConstraint.Priority(200), forSubviewAt: 1)
-        let libraryHost = NSViewController()
-        libraryHost.view = library
+        fileSidebar.view.frame = NSRect(x: 0, y: 0, width: 240, height: 520)
+        outlineController.view.frame = NSRect(x: 0, y: 0, width: 240, height: 168)
+        let stack = NSStackView(views: [fileSidebar.view, outlineController.view])
+        stack.orientation = .vertical
+        stack.alignment = .width
+        stack.spacing = 0
+        stack.distribution = .fill
+        stack.frame = NSRect(x: 0, y: 0, width: 240, height: 700)
+        stack.translatesAutoresizingMaskIntoConstraints = true
+        stack.autoresizingMask = [.width, .height]
+        fileSidebar.view.setContentHuggingPriority(.init(100), for: .vertical)
+        fileSidebar.view.setContentCompressionResistancePriority(.init(100), for: .vertical)
+        outlineController.view.setContentHuggingPriority(.defaultHigh, for: .vertical)
+        let outlineHeight = outlineController.view.heightAnchor.constraint(equalToConstant: 168)
+        outlineHeight.priority = .defaultHigh
+        outlineHeight.isActive = true
 
-        let outlineItem = NSSplitViewItem(sidebarWithViewController: libraryHost)
-        outlineItem.minimumThickness = 180
-        outlineItem.maximumThickness = 320
-        outlineItem.canCollapse = true
+        let libraryHost = NSViewController()
+        libraryHost.view = stack
+
+        let sidebar = NSSplitViewItem(sidebarWithViewController: libraryHost)
+        sidebar.minimumThickness = 200
+        sidebar.maximumThickness = 360
+        sidebar.canCollapse = true
+        sidebar.isCollapsed = false
+        sidebarItem = sidebar
 
         let host = NSViewController()
         let container = NSView()
@@ -314,7 +334,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         editorItem.minimumThickness = 360
 
         let splitController = NSSplitViewController()
-        splitController.splitViewItems = [outlineItem, editorItem]
+        splitController.splitViewItems = [sidebar, editorItem]
         rootSplit = splitController
         window?.contentView = nil
         window?.contentViewController = splitController

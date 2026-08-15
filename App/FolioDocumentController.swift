@@ -15,11 +15,17 @@ final class FolioDocumentController: NSDocumentController {
     override var defaultType: String? { Self.markdownType }
 
     override func documentClass(forType typeName: String) -> AnyClass? {
-        MarkdownDocument.self
+        if typeName == "public.folder" || typeName == "public.directory" {
+            return nil
+        }
+        return MarkdownDocument.self
     }
 
     /// LS often tags `.md` as public.plain-text; keep those files on MarkdownDocument.
     override func typeForContents(of url: URL) throws -> String {
+        if Self.isDirectory(url) {
+            return "public.folder"
+        }
         if Self.markdownExtensions.contains(url.pathExtension.lowercased()) {
             return Self.markdownType
         }
@@ -61,6 +67,12 @@ final class FolioDocumentController: NSDocumentController {
         display displayDocument: Bool,
         completionHandler: @escaping (NSDocument?, Bool, (any Error)?) -> Void
     ) {
+        if Self.isDirectory(url) {
+            let host = preferredAttachWindow ?? currentWindow()
+            openWorkspace(at: url, in: host)
+            completionHandler(nil, false, nil)
+            return
+        }
         if let existing = document(for: url) as? MarkdownDocument {
             existing.windowControllers.first?.showWindow(nil)
             completionHandler(existing, true, nil)
@@ -105,10 +117,15 @@ final class FolioDocumentController: NSDocumentController {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.message = "Choose a folder of Markdown files"
-        let host = (NSApp.keyWindow?.windowController as? MainWindowController)
+        let host = currentWindow()
+        preferredAttachWindow = host
         let finish: (NSApplication.ModalResponse) -> Void = { [weak self] response in
-            guard response == .OK, let url = panel.url else { return }
-            self?.openWorkspace(at: url, in: host)
+            guard let self else { return }
+            guard response == .OK, let url = panel.url else {
+                self.preferredAttachWindow = nil
+                return
+            }
+            self.openWorkspace(at: url, in: host)
         }
         if let window = host?.window {
             panel.beginSheetModal(for: window, completionHandler: finish)
@@ -117,26 +134,25 @@ final class FolioDocumentController: NSDocumentController {
         }
     }
 
-    func openWorkspace(at url: URL, in window: MainWindowController?, forceCurrentWindow: Bool = false) {
-        let host: MainWindowController
-        if forceCurrentWindow, let window {
-            host = window
-        } else if let window, window.workspace == nil {
-            host = window
-        } else if let reusable = MainWindowController.all.first(where: { $0.workspace == nil }) {
-            host = reusable
+    func openWorkspace(at url: URL, in window: MainWindowController?) {
+        let root = url.standardizedFileURL
+        let host = window ?? currentWindow() ?? MainWindowController()
+        if host.workspace?.rootURL != root {
+            host.bindWorkspace(Workspace(root: root))
         } else {
-            host = MainWindowController()
+            host.revealLibrary()
         }
-        host.bindWorkspace(Workspace(root: url))
         host.showWindow(nil)
+        if host.markdownDocument == nil, let first = host.workspace?.firstMarkdown() {
+            openMarkdown(at: first, in: host)
+        }
     }
 
     @objc func openEnclosingFolder(_ sender: Any?) {
-        guard let window = NSApp.keyWindow?.windowController as? MainWindowController,
+        guard let window = currentWindow(),
               let file = window.markdownDocument?.fileURL
         else { return }
-        openWorkspace(at: file.deletingLastPathComponent(), in: window, forceCurrentWindow: true)
+        openWorkspace(at: file.deletingLastPathComponent(), in: window)
     }
 
     func openInNewWindow(_ url: URL, workspaceRoot: URL?) {
@@ -232,13 +248,21 @@ final class FolioDocumentController: NSDocumentController {
     }
 
     func currentEmptyWindow() -> MainWindowController? {
-        if let key = NSApp.keyWindow?.windowController as? MainWindowController, key.document == nil {
-            return key
-        }
-        if let main = NSApp.mainWindow?.windowController as? MainWindowController, main.document == nil {
-            return main
-        }
+        if let key = currentWindow(), key.document == nil { return key }
         return MainWindowController.all.first { $0.document == nil }
+    }
+
+    func currentWindow() -> MainWindowController? {
+        if let key = NSApp.keyWindow?.windowController as? MainWindowController { return key }
+        if let main = NSApp.mainWindow?.windowController as? MainWindowController { return main }
+        return MainWindowController.all.first
+    }
+
+    static func isDirectory(_ url: URL) -> Bool {
+        if url.hasDirectoryPath { return true }
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+            && isDirectory.boolValue
     }
 
     // ⌘N is always a new empty window.
