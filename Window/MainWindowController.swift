@@ -736,13 +736,26 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
 
     private func jump(to item: OutlineItem) {
         programmaticScroll = true
-        defer { programmaticScroll = false }
-        if let range = item.span.utf16Range.location != NSNotFound ? item.span.utf16Range : nil {
-            sourceTextView?.scrollRangeToVisible(range)
-            sourceTextView?.setSelectedRange(NSRange(location: range.location, length: 0))
+        var pending = 0
+        let finish = { [weak self] in
+            pending -= 1
+            if pending <= 0 {
+                self?.programmaticScroll = false
+            }
         }
-        if let reading = readingRanges[item.id] {
-            readingTextView?.scrollRangeToVisible(reading)
+        if viewMode != .reading,
+           let range = item.span.utf16Range.location != NSNotFound ? item.span.utf16Range : nil,
+           let source = sourceTextView {
+            source.setSelectedRange(NSRange(location: range.location, length: 0))
+            pending += 1
+            TextScrolling.scroll(source, to: range, completion: finish)
+        }
+        if viewMode != .source, let reading = readingRanges[item.id], let readingView = readingTextView {
+            pending += 1
+            TextScrolling.scroll(readingView, to: reading, completion: finish)
+        }
+        if pending == 0 {
+            programmaticScroll = false
         }
         outlineController.focus(sourceLine: item.span.startLine, allowReveal: true)
     }
