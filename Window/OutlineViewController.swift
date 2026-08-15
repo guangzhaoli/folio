@@ -33,6 +33,8 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
     private var focusedLine = 1
     private var dockDragging = false
     private var suppressClick = false
+    private var outlineLiveScrolling = false
+    private var outlineScrollIdle: DispatchWorkItem?
 
     override func loadView() {
         let empty = NSTextField(labelWithString: "No headings")
@@ -56,6 +58,12 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         tableView.target = self
         tableView.action = #selector(clicked)
         tableScroll.documentView = tableView
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(outlineScrolled),
+            name: NSScrollView.didLiveScrollNotification,
+            object: tableScroll
+        )
 
         crumbStack.orientation = .horizontal
         crumbStack.alignment = .centerY
@@ -101,14 +109,15 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         reload()
     }
 
-    func focus(sourceLine: Int) {
+    func focus(sourceLine: Int, allowReveal: Bool = true) {
         focusedLine = sourceLine
         let next = OutlineItem.path(in: items, throughLine: sourceLine)
+        let headingChanged = next.last?.id != crumbs.last?.id
         if next.map(\.id) != crumbs.map(\.id) {
             crumbs = next
             rebuildCrumbs()
         }
-        highlightCurrentRow()
+        highlightCurrentRow(reveal: allowReveal && headingChanged && !outlineLiveScrolling)
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int { items.count }
@@ -133,14 +142,10 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         let item = items[row]
         let pad = String(repeating: "  ", count: max(0, item.level - 1))
         cell.textField?.stringValue = pad + item.title
-        let current = crumbs.last
-        let isCurrent = current?.id == item.id
-        cell.textField?.font = isCurrent || item.level <= 1
+        cell.textField?.font = item.level <= 1
             ? .systemFont(ofSize: 12, weight: .semibold)
             : .systemFont(ofSize: 12)
-        cell.textField?.textColor = isCurrent
-            ? .controlAccentColor
-            : (item.level <= 2 ? .labelColor : .secondaryLabelColor)
+        cell.textField?.textColor = item.level <= 2 ? .labelColor : .secondaryLabelColor
         return cell
     }
 
@@ -181,9 +186,8 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         switch gesture.state {
         case .began, .changed:
             if !dockDragging {
-                let held = gesture.holdDuration >= 0.16
-                let sideways = abs(translation.x) >= abs(translation.y)
-                guard distance > 8, held || sideways || showsBreadcrumb else { return }
+                let sideways = abs(translation.x) > abs(translation.y) + 6
+                guard distance > 10, sideways || showsBreadcrumb else { return }
                 dockDragging = true
                 suppressClick = true
                 onDockDrag?(.began, point)
@@ -204,6 +208,16 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         true
     }
 
+    @objc private func outlineScrolled() {
+        outlineLiveScrolling = true
+        outlineScrollIdle?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            self?.outlineLiveScrolling = false
+        }
+        outlineScrollIdle = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: work)
+    }
+
     @objc private func placeBelow() { onChoosePlacement?(.belowLibrary) }
     @objc private func placeTop() { onChoosePlacement?(.top) }
     @objc private func placeTrailing() { onChoosePlacement?(.trailing) }
@@ -214,22 +228,29 @@ final class OutlineViewController: NSViewController, NSTableViewDataSource, NSTa
         rebuildCrumbs()
     }
 
+    func replaceItemsIfNeeded(_ newItems: [OutlineItem]) {
+        let same = items.count == newItems.count
+            && zip(items, newItems).allSatisfy { $0.id == $1.id && $0.title == $1.title && $0.level == $1.level }
+        if same { return }
+        items = newItems
+    }
+
     private func reload() {
         emptyLabel?.isHidden = !items.isEmpty
         crumbs = OutlineItem.path(in: items, throughLine: focusedLine)
         tableView.reloadData()
         rebuildCrumbs()
-        highlightCurrentRow()
+        highlightCurrentRow(reveal: false)
     }
 
-    private func highlightCurrentRow() {
+    private func highlightCurrentRow(reveal: Bool) {
         guard !showsBreadcrumb, let current = crumbs.last,
               let row = items.firstIndex(where: { $0.id == current.id })
         else { return }
         if tableView.selectedRow != row {
             tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
-            tableView.reloadData()
         }
+        guard reveal else { return }
         let visible = tableView.rows(in: tableView.visibleRect)
         if !NSLocationInRange(row, visible) {
             tableView.scrollRowToVisible(row)
