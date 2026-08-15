@@ -2,7 +2,7 @@ import AppKit
 import QuartzCore
 
 enum TextScrolling {
-    static let duration: TimeInterval = 0.28
+    static let duration: TimeInterval = 0.22
 
     static func scroll(_ textView: NSTextView, to range: NSRange, completion: (() -> Void)? = nil) {
         ensureLayout(textView)
@@ -22,46 +22,37 @@ enum TextScrolling {
         animate(scroll, to: origin, completion: completion)
     }
 
-    static func scroll(_ tableView: NSTableView, toRow row: Int) {
-        guard row >= 0, row < tableView.numberOfRows, let scroll = tableView.enclosingScrollView else {
-            return
-        }
-        let rect = tableView.rect(ofRow: row)
-        let visible = scroll.documentVisibleRect
-        let maxY = max(0, (scroll.documentView?.bounds.height ?? 0) - visible.height)
-        let y = min(max(0, rect.midY - visible.height * 0.35), maxY)
-        animate(scroll, to: NSPoint(x: visible.minX, y: y), completion: nil)
-    }
-
     private static func animate(_ scroll: NSScrollView, to origin: NSPoint, completion: (() -> Void)?) {
         let clip = scroll.contentView
-        if hypot(clip.bounds.minX - origin.x, clip.bounds.minY - origin.y) < 2 {
+        let current = scroll.documentVisibleRect.origin
+        if hypot(current.x - origin.x, current.y - origin.y) < 2 {
             completion?()
             return
         }
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = duration
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            context.allowsImplicitAnimation = true
+            context.allowsImplicitAnimation = false
             clip.animator().setBoundsOrigin(origin)
+        }, completionHandler: {
             scroll.reflectScrolledClipView(clip)
-        }, completionHandler: completion)
+            completion?()
+        })
     }
 
     private static func origin(for range: NSRange, in textView: NSTextView, scroll: NSScrollView) -> NSPoint? {
-        var actual = NSRange()
-        let screen = textView.firstRect(forCharacterRange: range, actualRange: &actual)
         let docRect: NSRect
-        if screen.width + screen.height > 0, let window = textView.window {
-            docRect = textView.convert(window.convertFromScreen(screen), from: nil)
-        } else if let fallback = layoutRect(for: range, in: textView) {
+        if let fallback = layoutRect(for: range, in: textView), fallback.height > 0 || fallback.width > 0 {
             docRect = fallback
         } else {
-            return nil
+            var actual = NSRange()
+            let screen = textView.firstRect(forCharacterRange: range, actualRange: &actual)
+            guard screen.width + screen.height > 0, let window = textView.window else { return nil }
+            docRect = textView.convert(window.convertFromScreen(screen), from: nil)
         }
         let visible = scroll.documentVisibleRect
         let maxY = max(0, (scroll.documentView?.bounds.height ?? textView.bounds.height) - visible.height)
-        let y = min(max(0, docRect.minY - visible.height * 0.2), maxY)
+        let y = min(max(0, docRect.minY - 28), maxY)
         return NSPoint(x: visible.minX, y: y)
     }
 

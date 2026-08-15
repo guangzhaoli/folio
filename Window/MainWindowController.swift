@@ -746,9 +746,11 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         if viewMode != .reading,
            let range = item.span.utf16Range.location != NSNotFound ? item.span.utf16Range : nil,
            let source = sourceTextView {
-            source.setSelectedRange(NSRange(location: range.location, length: 0))
             pending += 1
-            TextScrolling.scroll(source, to: range, completion: finish)
+            TextScrolling.scroll(source, to: range) {
+                source.setSelectedRange(NSRange(location: range.location, length: 0))
+                finish()
+            }
         }
         if viewMode != .source, let reading = readingRanges[item.id], let readingView = readingTextView {
             pending += 1
