@@ -7,6 +7,47 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A10000000000000000000002 /* MarkdownAST.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* MarkdownAST.swift */; };
+		A10000000000000000000004 /* SourceMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* SourceMap.swift */; };
+		A10000000000000000000006 /* MarkdownParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* MarkdownParser.swift */; };
+		A10000000000000000000008 /* ReaderStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* ReaderStyle.swift */; };
+		A1000000000000000000000A /* ReadingRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* ReadingRenderer.swift */; };
+		A1000000000000000000000C /* ReadingTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000B /* ReadingTextView.swift */; };
+		A1000000000000000000000E /* SourceHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000D /* SourceHighlighter.swift */; };
+		A10000000000000000000010 /* OutlineViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000F /* OutlineViewController.swift */; };
+		A10000000000000000000012 /* WindowChromeState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* WindowChromeState.swift */; };
+		C20000000000000000000000 /* arena.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000 /* arena.c */; };
+		C20000000000000000000001 /* blocks.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000001 /* blocks.c */; };
+		C20000000000000000000002 /* buffer.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000002 /* buffer.c */; };
+		C20000000000000000000003 /* cmark.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000003 /* cmark.c */; };
+		C20000000000000000000004 /* cmark_ctype.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000004 /* cmark_ctype.c */; };
+		C20000000000000000000005 /* commonmark.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000005 /* commonmark.c */; };
+		C20000000000000000000006 /* footnotes.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000006 /* footnotes.c */; };
+		C20000000000000000000007 /* houdini_href_e.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000007 /* houdini_href_e.c */; };
+		C20000000000000000000008 /* houdini_html_e.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000008 /* houdini_html_e.c */; };
+		C20000000000000000000009 /* houdini_html_u.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000009 /* houdini_html_u.c */; };
+		C20000000000000000000010 /* html.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000010 /* html.c */; };
+		C20000000000000000000011 /* inlines.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000011 /* inlines.c */; };
+		C20000000000000000000012 /* iterator.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000012 /* iterator.c */; };
+		C20000000000000000000013 /* linked_list.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000013 /* linked_list.c */; };
+		C20000000000000000000014 /* map.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000014 /* map.c */; };
+		C20000000000000000000015 /* node.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000015 /* node.c */; };
+		C20000000000000000000016 /* plaintext.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000016 /* plaintext.c */; };
+		C20000000000000000000017 /* plugin.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000017 /* plugin.c */; };
+		C20000000000000000000018 /* references.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000018 /* references.c */; };
+		C20000000000000000000019 /* registry.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000019 /* registry.c */; };
+		C20000000000000000000020 /* render.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000020 /* render.c */; };
+		C20000000000000000000021 /* scanners.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000021 /* scanners.c */; };
+		C20000000000000000000022 /* syntax_extension.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000022 /* syntax_extension.c */; };
+		C20000000000000000000023 /* utf8.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000023 /* utf8.c */; };
+		C20000000000000000000024 /* autolink.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000024 /* autolink.c */; };
+		C20000000000000000000025 /* core-extensions.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000025 /* core-extensions.c */; };
+		C20000000000000000000026 /* ext_scanners.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000026 /* ext_scanners.c */; };
+		C20000000000000000000027 /* strikethrough.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000027 /* strikethrough.c */; };
+		C20000000000000000000028 /* table.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000028 /* table.c */; };
+		C20000000000000000000029 /* tagfilter.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000029 /* tagfilter.c */; };
+		C20000000000000000000030 /* tasklist.c in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000030 /* tasklist.c */; };
+		A10000000000000000000022 /* ParseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000021 /* ParseTests.swift */; };
 		A1B2C3D4E5F6000000000021 /* FolioAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000020 /* FolioAppDelegate.swift */; };
 		A1B2C3D4E5F6000000000023 /* FolioDocumentController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000022 /* FolioDocumentController.swift */; };
 		A1B2C3D4E5F6000000000025 /* UpdateChecking.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000024 /* UpdateChecking.swift */; };
@@ -30,6 +71,47 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A10000000000000000000001 /* MarkdownAST.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownAST.swift; sourceTree = "<group>"; };
+		A10000000000000000000003 /* SourceMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceMap.swift; sourceTree = "<group>"; };
+		A10000000000000000000005 /* MarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownParser.swift; sourceTree = "<group>"; };
+		A10000000000000000000007 /* ReaderStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderStyle.swift; sourceTree = "<group>"; };
+		A10000000000000000000009 /* ReadingRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingRenderer.swift; sourceTree = "<group>"; };
+		A1000000000000000000000B /* ReadingTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingTextView.swift; sourceTree = "<group>"; };
+		A1000000000000000000000D /* SourceHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceHighlighter.swift; sourceTree = "<group>"; };
+		A1000000000000000000000F /* OutlineViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlineViewController.swift; sourceTree = "<group>"; };
+		A10000000000000000000011 /* WindowChromeState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowChromeState.swift; sourceTree = "<group>"; };
+		C10000000000000000000000 /* arena.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = arena.c; sourceTree = "<group>"; };
+		C10000000000000000000001 /* blocks.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = blocks.c; sourceTree = "<group>"; };
+		C10000000000000000000002 /* buffer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = buffer.c; sourceTree = "<group>"; };
+		C10000000000000000000003 /* cmark.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = cmark.c; sourceTree = "<group>"; };
+		C10000000000000000000004 /* cmark_ctype.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = cmark_ctype.c; sourceTree = "<group>"; };
+		C10000000000000000000005 /* commonmark.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = commonmark.c; sourceTree = "<group>"; };
+		C10000000000000000000006 /* footnotes.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = footnotes.c; sourceTree = "<group>"; };
+		C10000000000000000000007 /* houdini_href_e.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = houdini_href_e.c; sourceTree = "<group>"; };
+		C10000000000000000000008 /* houdini_html_e.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = houdini_html_e.c; sourceTree = "<group>"; };
+		C10000000000000000000009 /* houdini_html_u.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = houdini_html_u.c; sourceTree = "<group>"; };
+		C10000000000000000000010 /* html.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = html.c; sourceTree = "<group>"; };
+		C10000000000000000000011 /* inlines.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = inlines.c; sourceTree = "<group>"; };
+		C10000000000000000000012 /* iterator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = iterator.c; sourceTree = "<group>"; };
+		C10000000000000000000013 /* linked_list.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = linked_list.c; sourceTree = "<group>"; };
+		C10000000000000000000014 /* map.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = map.c; sourceTree = "<group>"; };
+		C10000000000000000000015 /* node.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = node.c; sourceTree = "<group>"; };
+		C10000000000000000000016 /* plaintext.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = plaintext.c; sourceTree = "<group>"; };
+		C10000000000000000000017 /* plugin.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = plugin.c; sourceTree = "<group>"; };
+		C10000000000000000000018 /* references.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = references.c; sourceTree = "<group>"; };
+		C10000000000000000000019 /* registry.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = registry.c; sourceTree = "<group>"; };
+		C10000000000000000000020 /* render.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = render.c; sourceTree = "<group>"; };
+		C10000000000000000000021 /* scanners.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = scanners.c; sourceTree = "<group>"; };
+		C10000000000000000000022 /* syntax_extension.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = syntax_extension.c; sourceTree = "<group>"; };
+		C10000000000000000000023 /* utf8.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = utf8.c; sourceTree = "<group>"; };
+		C10000000000000000000024 /* autolink.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = autolink.c; sourceTree = "<group>"; };
+		C10000000000000000000025 /* core-extensions.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = core-extensions.c; sourceTree = "<group>"; };
+		C10000000000000000000026 /* ext_scanners.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ext_scanners.c; sourceTree = "<group>"; };
+		C10000000000000000000027 /* strikethrough.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = strikethrough.c; sourceTree = "<group>"; };
+		C10000000000000000000028 /* table.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = table.c; sourceTree = "<group>"; };
+		C10000000000000000000029 /* tagfilter.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tagfilter.c; sourceTree = "<group>"; };
+		C10000000000000000000030 /* tasklist.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tasklist.c; sourceTree = "<group>"; };
+		A10000000000000000000021 /* ParseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParseTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6000000000007 /* Folio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Folio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F6000000000020 /* FolioAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolioAppDelegate.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6000000000022 /* FolioDocumentController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolioDocumentController.swift; sourceTree = "<group>"; };
@@ -70,6 +152,9 @@
 				A1B2C3D4E5F6000000000004 /* App */,
 				A1B2C3D4E5F6000000000005 /* Window */,
 				A1B2C3D4E5F6000000000034 /* Document */,
+				A10000000000000000000030 /* Parse */,
+				A10000000000000000000040 /* Reader */,
+				A10000000000000000000050 /* Editor */,
 				A1B2C3D4E5F6000000000037 /* Tests */,
 				A1B2C3D4E5F6000000000003 /* Products */,
 			);
@@ -103,6 +188,8 @@
 			children = (
 				A1B2C3D4E5F600000000002C /* MainWindowController.swift */,
 				A1B2C3D4E5F600000000002E /* EmptyStateView.swift */,
+				A1000000000000000000000F /* OutlineViewController.swift */,
+				A10000000000000000000011 /* WindowChromeState.swift */,
 			);
 			path = Window;
 			sourceTree = "<group>";
@@ -120,6 +207,7 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F6000000000038 /* EncodingTests */,
+				A10000000000000000000060 /* ParseTests */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -130,6 +218,97 @@
 				A1B2C3D4E5F6000000000035 /* EncodingTests.swift */,
 			);
 			path = EncodingTests;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000030 /* Parse */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000001 /* MarkdownAST.swift */,
+				A10000000000000000000003 /* SourceMap.swift */,
+				A10000000000000000000005 /* MarkdownParser.swift */,
+				A10000000000000000000031 /* CMarkGFM */,
+			);
+			path = Parse;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000031 /* CMarkGFM */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000032 /* src */,
+				A10000000000000000000033 /* extensions */,
+			);
+			path = CMarkGFM;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000032 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				C10000000000000000000000 /* arena.c */,
+				C10000000000000000000001 /* blocks.c */,
+				C10000000000000000000002 /* buffer.c */,
+				C10000000000000000000003 /* cmark.c */,
+				C10000000000000000000004 /* cmark_ctype.c */,
+				C10000000000000000000005 /* commonmark.c */,
+				C10000000000000000000006 /* footnotes.c */,
+				C10000000000000000000007 /* houdini_href_e.c */,
+				C10000000000000000000008 /* houdini_html_e.c */,
+				C10000000000000000000009 /* houdini_html_u.c */,
+				C10000000000000000000010 /* html.c */,
+				C10000000000000000000011 /* inlines.c */,
+				C10000000000000000000012 /* iterator.c */,
+				C10000000000000000000013 /* linked_list.c */,
+				C10000000000000000000014 /* map.c */,
+				C10000000000000000000015 /* node.c */,
+				C10000000000000000000016 /* plaintext.c */,
+				C10000000000000000000017 /* plugin.c */,
+				C10000000000000000000018 /* references.c */,
+				C10000000000000000000019 /* registry.c */,
+				C10000000000000000000020 /* render.c */,
+				C10000000000000000000021 /* scanners.c */,
+				C10000000000000000000022 /* syntax_extension.c */,
+				C10000000000000000000023 /* utf8.c */,
+			);
+			path = src;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000033 /* extensions */ = {
+			isa = PBXGroup;
+			children = (
+				C10000000000000000000024 /* autolink.c */,
+				C10000000000000000000025 /* core-extensions.c */,
+				C10000000000000000000026 /* ext_scanners.c */,
+				C10000000000000000000027 /* strikethrough.c */,
+				C10000000000000000000028 /* table.c */,
+				C10000000000000000000029 /* tagfilter.c */,
+				C10000000000000000000030 /* tasklist.c */,
+			);
+			path = extensions;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000040 /* Reader */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000007 /* ReaderStyle.swift */,
+				A10000000000000000000009 /* ReadingRenderer.swift */,
+				A1000000000000000000000B /* ReadingTextView.swift */,
+			);
+			path = Reader;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000050 /* Editor */ = {
+			isa = PBXGroup;
+			children = (
+				A1000000000000000000000D /* SourceHighlighter.swift */,
+			);
+			path = Editor;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000060 /* ParseTests */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000021 /* ParseTests.swift */,
+			);
+			path = ParseTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -232,6 +411,46 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000000000000000000002 /* MarkdownAST.swift in Sources */,
+				A10000000000000000000004 /* SourceMap.swift in Sources */,
+				A10000000000000000000006 /* MarkdownParser.swift in Sources */,
+				A10000000000000000000008 /* ReaderStyle.swift in Sources */,
+				A1000000000000000000000A /* ReadingRenderer.swift in Sources */,
+				A1000000000000000000000C /* ReadingTextView.swift in Sources */,
+				A1000000000000000000000E /* SourceHighlighter.swift in Sources */,
+				A10000000000000000000010 /* OutlineViewController.swift in Sources */,
+				A10000000000000000000012 /* WindowChromeState.swift in Sources */,
+				C20000000000000000000000 /* arena.c in Sources */,
+				C20000000000000000000001 /* blocks.c in Sources */,
+				C20000000000000000000002 /* buffer.c in Sources */,
+				C20000000000000000000003 /* cmark.c in Sources */,
+				C20000000000000000000004 /* cmark_ctype.c in Sources */,
+				C20000000000000000000005 /* commonmark.c in Sources */,
+				C20000000000000000000006 /* footnotes.c in Sources */,
+				C20000000000000000000007 /* houdini_href_e.c in Sources */,
+				C20000000000000000000008 /* houdini_html_e.c in Sources */,
+				C20000000000000000000009 /* houdini_html_u.c in Sources */,
+				C20000000000000000000010 /* html.c in Sources */,
+				C20000000000000000000011 /* inlines.c in Sources */,
+				C20000000000000000000012 /* iterator.c in Sources */,
+				C20000000000000000000013 /* linked_list.c in Sources */,
+				C20000000000000000000014 /* map.c in Sources */,
+				C20000000000000000000015 /* node.c in Sources */,
+				C20000000000000000000016 /* plaintext.c in Sources */,
+				C20000000000000000000017 /* plugin.c in Sources */,
+				C20000000000000000000018 /* references.c in Sources */,
+				C20000000000000000000019 /* registry.c in Sources */,
+				C20000000000000000000020 /* render.c in Sources */,
+				C20000000000000000000021 /* scanners.c in Sources */,
+				C20000000000000000000022 /* syntax_extension.c in Sources */,
+				C20000000000000000000023 /* utf8.c in Sources */,
+				C20000000000000000000024 /* autolink.c in Sources */,
+				C20000000000000000000025 /* core-extensions.c in Sources */,
+				C20000000000000000000026 /* ext_scanners.c in Sources */,
+				C20000000000000000000027 /* strikethrough.c in Sources */,
+				C20000000000000000000028 /* table.c in Sources */,
+				C20000000000000000000029 /* tagfilter.c in Sources */,
+				C20000000000000000000030 /* tasklist.c in Sources */,
 				A1B2C3D4E5F6000000000021 /* FolioAppDelegate.swift in Sources */,
 				A1B2C3D4E5F6000000000023 /* FolioDocumentController.swift in Sources */,
 				A1B2C3D4E5F6000000000025 /* UpdateChecking.swift in Sources */,
@@ -247,6 +466,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1B2C3D4E5F6000000000036 /* EncodingTests.swift in Sources */,
+				A10000000000000000000022 /* ParseTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -390,6 +610,12 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Info.plist;
+				HEADER_SEARCH_PATHS = (
+					Parse/CMarkGFM/include,
+					Parse/CMarkGFM/src,
+					Parse/CMarkGFM/extensions,
+				);
+				SWIFT_OBJC_BRIDGING_HEADER = "Parse/Folio-Bridging-Header.h";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -416,6 +642,12 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Info.plist;
+				HEADER_SEARCH_PATHS = (
+					Parse/CMarkGFM/include,
+					Parse/CMarkGFM/src,
+					Parse/CMarkGFM/extensions,
+				);
+				SWIFT_OBJC_BRIDGING_HEADER = "Parse/Folio-Bridging-Header.h";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -438,6 +670,12 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					Parse/CMarkGFM/include,
+					Parse/CMarkGFM/src,
+					Parse/CMarkGFM/extensions,
+				);
+				SWIFT_OBJC_BRIDGING_HEADER = "Parse/Folio-Bridging-Header.h";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -462,6 +700,12 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					Parse/CMarkGFM/include,
+					Parse/CMarkGFM/src,
+					Parse/CMarkGFM/extensions,
+				);
+				SWIFT_OBJC_BRIDGING_HEADER = "Parse/Folio-Bridging-Header.h";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

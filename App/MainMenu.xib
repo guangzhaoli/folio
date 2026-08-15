@@ -348,6 +348,28 @@
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="View" id="HyV-fh-RgO">
                         <items>
+                            <menuItem title="Source" keyEquivalent="1" id="vmd-src-001">
+                                <connections>
+                                    <action selector="showSource:" target="-1" id="vmd-src-act"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Split" keyEquivalent="2" id="vmd-spl-001">
+                                <connections>
+                                    <action selector="showSplit:" target="-1" id="vmd-spl-act"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Reading" keyEquivalent="3" id="vmd-red-001">
+                                <connections>
+                                    <action selector="showReading:" target="-1" id="vmd-red-act"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Show Outline" keyEquivalent="o" id="vmd-out-001">
+                                <modifierMask key="keyEquivalentModifierMask" control="YES" command="YES"/>
+                                <connections>
+                                    <action selector="toggleOutline:" target="-1" id="vmd-out-act"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="vmd-sep-001"/>
                             <menuItem title="Show Toolbar" keyEquivalent="t" id="snW-S8-Cw5">
                                 <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
                                 <connections>
