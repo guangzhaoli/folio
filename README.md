@@ -21,7 +21,7 @@ Double-click a `.md` file to open it in Folio. Folio registers as the default ha
 
 Relative links and images resolve from the file’s directory. Clicking a `.md` link opens it in Folio; `http(s)` and `mailto` use the system. Remote images are not downloaded.
 
-**Edit → Find** (⌘F) searches the focused pane. Reading find skips table and image attachments. Replace is only available in the source pane.
+**Edit → Find** (⌘F) searches the focused pane. Matches are highlighted like Notes: every hit in yellow, the current hit stronger. Reading find skips table and image attachments. Replace is only available in the source pane.
 
 Saves are always UTF-8 without a BOM. Files larger than 50 MB are refused.
 

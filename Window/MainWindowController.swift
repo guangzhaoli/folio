@@ -266,6 +266,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         guard let target = findTarget() else { return }
         window?.makeFirstResponder(target)
         target.performFindPanelAction(sender)
+        DispatchQueue.main.async {
+            FindHighlight.refresh(in: target)
+        }
     }
 
     override func centerSelectionInVisibleArea(_ sender: Any?) {
@@ -654,6 +657,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         textView.textContainerInset = NSSize(width: 18, height: 18)
         sourceTextView = textView
         editorScrollView = scroll
+        FindHighlight.attach(to: scroll, textView: textView)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(sourceScrolled),
@@ -693,6 +697,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         scroll.documentView = textView
         readingTextView = textView
         readingScrollView = scroll
+        FindHighlight.attach(to: scroll, textView: textView)
         textView.onAppearanceChange = { [weak self] in
             guard let self else { return }
             self.apply(snapshot: self.snapshot)
@@ -758,6 +763,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         if let source = sourceTextView, source.hasMarkedText() == false {
             SourceHighlighter.apply(snapshot: snapshot, to: source)
         }
+        FindHighlight.refresh(in: readingTextView)
+        FindHighlight.refresh(in: sourceTextView)
         refreshOutlineFocus(allowReveal: false)
         jumpToPendingFragment()
     }
