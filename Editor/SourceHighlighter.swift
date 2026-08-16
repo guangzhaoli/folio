@@ -14,7 +14,7 @@ enum SourceHighlighter {
                   NSIntersectionRange(range, padded).length > 0,
                   let textRange = NSTextRange(range, in: layout)
             else { return }
-            layout.setRenderingAttributes([.foregroundColor: color], for: textRange)
+            layout.addRenderingAttribute(.foregroundColor, value: color, for: textRange)
         }
 
         func walk(_ nodes: [BlockNode]) {

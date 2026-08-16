@@ -36,6 +36,9 @@ final class ReadingTextView: NSTextView {
             }
         }
         super.setSelectedRange(range, affinity: affinity, stillSelecting: stillSelectingFlag)
+        if !stillSelectingFlag {
+            FindHighlight.refresh(in: self)
+        }
     }
 
     override func performFindPanelAction(_ sender: Any?) {
@@ -44,9 +47,13 @@ final class ReadingTextView: NSTextView {
            action == .nextMatch || action == .previousMatch {
             super.performFindPanelAction(sender)
             skipAttachmentSelection(backwards: action == .previousMatch)
+            FindHighlight.refresh(in: self)
             return
         }
         super.performFindPanelAction(sender)
+        DispatchQueue.main.async { [weak self] in
+            FindHighlight.refresh(in: self)
+        }
     }
 
     override func clicked(onLink link: Any, at charIndex: Int) {

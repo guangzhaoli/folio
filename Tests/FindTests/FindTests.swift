@@ -31,4 +31,19 @@ final class FindTests: XCTestCase {
         let wrap = FindSupport.nextMatch(in: text, pattern: "one", from: 11, backwards: false, wrap: true)
         XCTAssertEqual(wrap?.location, 0)
     }
+
+    func testAllMatchesSkipsAttachmentsAndIgnoresCase() {
+        let text = "Hello 标题\u{FFFC}标题 hello"
+        let hits = FindSupport.allMatches(in: text, pattern: "hello")
+        XCTAssertEqual(hits.count, 2)
+        XCTAssertEqual(hits[0].location, 0)
+        XCTAssertEqual(FindSupport.allMatches(in: text, pattern: "标题").count, 2)
+        XCTAssertEqual(FindSupport.allMatches(in: text, pattern: ""), [])
+    }
+
+    func testCurrentMatchIsTheSelectedHit() {
+        let matches = [NSRange(location: 0, length: 3), NSRange(location: 8, length: 3)]
+        XCTAssertEqual(FindSupport.currentMatch(in: matches, selected: matches[1]), matches[1])
+        XCTAssertNil(FindSupport.currentMatch(in: matches, selected: NSRange(location: 1, length: 0)))
+    }
 }
